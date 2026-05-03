@@ -793,22 +793,22 @@ export default function Profile() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex mb-6 bg-slate-100 rounded-full p-1">
           {TABS.map(tab => {
             const isActive = activeTab === tab;
             return (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                style={{ backgroundColor: isActive ? "#364F9F" : "#F05B4E" }}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white shadow-sm transition-all hover:opacity-90"
+                style={isActive ? { backgroundColor: "#364F9F" } : {}}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-sm font-medium transition-all ${isActive ? "text-white shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                 data-testid={`tab-${tab.toLowerCase().replace(/\s+/g, "-")}`}
               >
                 {tab === "Profile & Addresses" && (
-                  <img src={headerUserImg} alt="" className="w-4 h-4 object-contain brightness-0 invert" />
+                  <img src={headerUserImg} alt="" className={`w-4 h-4 object-contain ${isActive ? "brightness-0 invert" : "opacity-50"}`} />
                 )}
                 {tab === "My Orders" && (
-                  <img src={headerCartImg} alt="" className="w-4 h-4 object-contain brightness-0 invert" />
+                  <img src={headerCartImg} alt="" className={`w-4 h-4 object-contain ${isActive ? "brightness-0 invert" : "opacity-50"}`} />
                 )}
                 {tab}
               </button>
@@ -1176,21 +1176,21 @@ export default function Profile() {
         {/* ── My Orders Tab ── */}
         {activeTab === "My Orders" && (
           <div className="space-y-3">
-            {/* Active / Previous sub-tabs — matches main Profile/Orders tab style */}
-            <div className="flex gap-2">
+            {/* Active / Previous sub-tabs */}
+            <div className="flex bg-slate-100 rounded-full p-1">
               {(["current", "previous"] as OrdersSubTab[]).map(sub => {
                 const isActive = ordersSubTab === sub;
                 return (
                   <button
                     key={sub}
                     onClick={() => setOrdersSubTab(sub)}
-                    style={{ backgroundColor: isActive ? "#364F9F" : "#F05B4E" }}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white shadow-sm transition-all hover:opacity-90"
+                    style={isActive ? { backgroundColor: "#364F9F" } : {}}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-sm font-medium transition-all ${isActive ? "text-white shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                     data-testid={`tab-orders-${sub}`}
                   >
                     {sub === "current" ? "Active" : "Previous"}
                     {sub === "current" && currentOrders.length > 0 && (
-                      <span className="bg-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center" style={{ color: "#364F9F" }}>{currentOrders.length}</span>
+                      <span className={`text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center ${isActive ? "bg-white" : "bg-slate-400 text-white"}`} style={isActive ? { color: "#364F9F" } : {}}>{currentOrders.length}</span>
                     )}
                   </button>
                 );
