@@ -386,7 +386,7 @@ export default function ProductDetail() {
                 </button>
               </div>
               <Button
-                onClick={() => { for (let i = 0; i < qty; i++) addToCart(product); }}
+                onClick={() => { for (let i = 0; i < qty; i++) addToCart(product, 1, true); }}
                 disabled={isUnavailable}
                 className="flex-1 h-11 rounded-full bg-primary hover:bg-primary/90 text-white font-semibold text-sm shadow-md"
               >

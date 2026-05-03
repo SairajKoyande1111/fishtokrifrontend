@@ -12,7 +12,7 @@ export interface CartItem extends Omit<Product, 'id'> {
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: Product | CartItem, quantity?: number) => void;
+  addToCart: (product: Product | CartItem, quantity?: number, openCart?: boolean) => void;
   removeFromCart: (productId: number) => void;
   updateQuantity: (productId: number, quantity: number) => void;
   updateInstruction: (productId: number, instruction: string) => void;
@@ -31,7 +31,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const { customer, openLoginModal } = useCustomer();
 
-  const addToCart = (product: Product | CartItem, quantity = 1) => {
+  const addToCart = (product: Product | CartItem, quantity = 1, openCart = false) => {
     if (!customer) {
       openLoginModal();
       return;
@@ -51,7 +51,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       description: `${quantity}x ${product.name} added.`,
       duration: 2000,
     });
-    setIsCartOpen(true);
+    if (openCart) setIsCartOpen(true);
   };
 
   const removeFromCart = (productId: number) => {
