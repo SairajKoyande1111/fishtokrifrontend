@@ -139,6 +139,7 @@ const TRACK_STEPS = [
 ];
 const BRAND_RED_FILTER = "brightness(0) saturate(100%) invert(45%) sepia(89%) saturate(1620%) hue-rotate(331deg) brightness(99%) contrast(89%)";
 const BRAND_BLUE_FILTER = "brightness(0) saturate(100%) invert(28%) sepia(48%) saturate(1517%) hue-rotate(212deg) brightness(91%) contrast(89%)";
+const BRAND_ORANGE_FILTER = "brightness(0) saturate(100%) invert(59%) sepia(92%) saturate(1400%) hue-rotate(347deg) brightness(103%) contrast(97%)";
 const TRACK_STATUS_ORDER = ["pending", "confirmed", "out_for_delivery", "delivered"];
 
 function TrackOrderModal({ order, onClose }: { order: OrderRequest; onClose: () => void }) {
@@ -196,7 +197,7 @@ function TrackOrderModal({ order, onClose }: { order: OrderRequest; onClose: () 
                           src={step.img}
                           alt=""
                           className={`w-7 h-7 object-contain transition-all ${isCurrent && step.status !== "delivered" ? "animate-pulse" : ""}`}
-                          style={{ filter: isCurrent && step.status !== "delivered" ? "invert(56%) sepia(90%) saturate(1200%) hue-rotate(360deg) brightness(100%) contrast(95%)" : BRAND_BLUE_FILTER }}
+                          style={{ filter: isCurrent && step.status !== "delivered" ? BRAND_ORANGE_FILTER : BRAND_BLUE_FILTER }}
                         />
                         {isCurrent && step.status !== "delivered" && (
                           <>
@@ -325,7 +326,7 @@ function OrderCard({ order, productImageMap }: { order: OrderRequest; productIma
                       src={step.img}
                       alt=""
                       className={`w-7 h-7 object-contain transition-all ${isCurrent && step.status !== "delivered" ? "animate-pulse" : ""}`}
-                      style={{ filter: isCurrent && step.status !== "delivered" ? "invert(56%) sepia(90%) saturate(1200%) hue-rotate(360deg) brightness(100%) contrast(95%)" : BRAND_BLUE_FILTER }}
+                      style={{ filter: isCurrent && step.status !== "delivered" ? BRAND_ORANGE_FILTER : BRAND_BLUE_FILTER }}
                     />
                     {isCurrent && step.status !== "delivered" && (
                       <>
