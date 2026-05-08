@@ -3,6 +3,7 @@ import { useProducts } from "@/hooks/use-products";
 import { useProductCoupons } from "@/hooks/use-coupons";
 import { useCart } from "@/context/CartContext";
 import { Header } from "@/components/storefront/Header";
+import { Footer } from "@/components/storefront/Footer";
 import { CartDrawer } from "@/components/storefront/CartDrawer";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -145,6 +146,7 @@ function RecipeCard({
 }
 
 export default function ProductDetail() {
+  const [showAllCoupons, setShowAllCoupons] = useState(false);
   const [, params] = useRoute("/product/:id");
   const [, setLocation] = useLocation();
   const { data: products, isLoading } = useProducts();
@@ -422,9 +424,18 @@ export default function ProductDetail() {
                 </div>
 
                 <div className="flex flex-col divide-y divide-border/20 border-t border-border/20">
-                  {liveCoupons.map((c) => (
+                  {(showAllCoupons ? liveCoupons : liveCoupons.slice(0, 3)).map((c) => (
                     <CouponCard key={c.id} code={c.code} description={c.description} color={c.color} />
                   ))}
+                  {liveCoupons.length > 3 && (
+                    <button
+                      onClick={() => setShowAllCoupons(v => !v)}
+                      className="w-full py-2.5 text-xs font-semibold text-center transition-colors hover:opacity-80"
+                      style={{ color: "#364F9F" }}
+                    >
+                      {showAllCoupons ? "View Less" : `View ${liveCoupons.length - 3} More Offer${liveCoupons.length - 3 > 1 ? "s" : ""}`}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -543,6 +554,7 @@ export default function ProductDetail() {
       </div>
 
       <CartDrawer />
+      <Footer />
     </div>
   );
 }

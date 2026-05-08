@@ -2,6 +2,7 @@ import { useRoute, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Header } from "@/components/storefront/Header";
 import { CartDrawer } from "@/components/storefront/CartDrawer";
+import { Footer } from "@/components/storefront/Footer";
 import { getDummyDetail } from "@/lib/productDummyData";
 import { useProducts } from "@/hooks/use-products";
 import { ChevronLeft, ChefHat, Check, RotateCcw } from "lucide-react";
@@ -381,15 +382,18 @@ export default function RecipeDetail() {
       .filter(({ i }) => i !== recipeIndex);
 
     return (
-      <RecipeDetailView
-        recipe={recipe}
-        onBack={() => setLocation(`/product/${productId}`)}
-        otherRecipes={otherRecipes}
-        onSelectRecipe={(filteredIdx) => {
-          const originalIdx = otherOriginalIndices[filteredIdx]?.i ?? 0;
-          setLocation(`/recipe/product/${productId}/${originalIdx}`);
-        }}
-      />
+      <>
+        <RecipeDetailView
+          recipe={recipe}
+          onBack={() => setLocation(`/product/${productId}`)}
+          otherRecipes={otherRecipes}
+          onSelectRecipe={(filteredIdx) => {
+            const originalIdx = otherOriginalIndices[filteredIdx]?.i ?? 0;
+            setLocation(`/recipe/product/${productId}/${originalIdx}`);
+          }}
+        />
+        <Footer />
+      </>
     );
   }
 
@@ -414,15 +418,18 @@ export default function RecipeDetail() {
   const otherDummy = dummy.recipes.filter((_, idx) => idx !== index);
 
   return (
-    <RecipeDetailView
-      recipe={{ ...recipe, title: recipe.name }}
-      onBack={() => history.back()}
-      otherRecipes={otherDummy}
-      onSelectRecipe={(filteredIdx) => {
-        const original = dummy.recipes.find(x => x.name === otherDummy[filteredIdx]?.name);
-        const originalIdx = dummy.recipes.indexOf(original!);
-        setLocation(`/recipe/${encodeURIComponent(category)}/${originalIdx}`);
-      }}
-    />
+    <>
+      <RecipeDetailView
+        recipe={{ ...recipe, title: recipe.name }}
+        onBack={() => history.back()}
+        otherRecipes={otherDummy}
+        onSelectRecipe={(filteredIdx) => {
+          const original = dummy.recipes.find(x => x.name === otherDummy[filteredIdx]?.name);
+          const originalIdx = dummy.recipes.indexOf(original!);
+          setLocation(`/recipe/${encodeURIComponent(category)}/${originalIdx}`);
+        }}
+      />
+      <Footer />
+    </>
   );
 }

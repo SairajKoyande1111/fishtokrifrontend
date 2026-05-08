@@ -3,6 +3,7 @@ import { useRoute, useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useProducts } from "@/hooks/use-products";
 import { Header } from "@/components/storefront/Header";
+import { Footer } from "@/components/storefront/Footer";
 import { CartDrawer } from "@/components/storefront/CartDrawer";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { SwipeHint } from "@/components/storefront/SwipeHint";
@@ -210,6 +211,7 @@ export default function CategoryPage() {
       </main>
 
       <CartDrawer />
+      <Footer />
     </div>
   );
 }

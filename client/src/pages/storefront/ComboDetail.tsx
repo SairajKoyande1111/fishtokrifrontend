@@ -2,6 +2,7 @@ import { useParams, useLocation } from "wouter";
 import { useCart } from "@/context/CartContext";
 import { useCoupons } from "@/hooks/use-coupons";
 import { Header } from "@/components/storefront/Header";
+import { Footer } from "@/components/storefront/Footer";
 import { CartDrawer } from "@/components/storefront/CartDrawer";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -769,6 +770,7 @@ export default function ComboDetail() {
       </div>
 
       <CartDrawer />
+      <Footer />
     </div>
   );
 }
