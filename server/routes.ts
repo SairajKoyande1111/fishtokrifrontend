@@ -1225,6 +1225,12 @@ export async function registerRoutes(
     const customer = await storage.upsertCustomer(normalised, { phone: normalised });
     req.session.customerPhone = normalised;
 
+    // Explicitly save the session before responding to avoid race condition
+    // where the response is sent before the session is written to MongoDB
+    await new Promise<void>((resolve, reject) => {
+      req.session.save((err) => (err ? reject(err) : resolve()));
+    });
+
     // Send welcome WhatsApp message (fire-and-forget)
     const displayName = (customer as any)?.name || "there";
     sendWhatsApp("fishtokri_welcome", normalised, [displayName]).catch(() => {});
