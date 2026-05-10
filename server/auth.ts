@@ -35,6 +35,19 @@ export function setupAuth(app: Express) {
   // Always trust the first proxy (Nginx on VPS, Replit's proxy in dev)
   app.set("trust proxy", 1);
 
+  // Nginx on this VPS does not forward X-Forwarded-Proto.
+  // express-session's `issecure()` check will fail without it, causing
+  // the Secure cookie to never be sent. Patch the header here so the
+  // session middleware sees the connection as HTTPS in production.
+  if (process.env.NODE_ENV === "production") {
+    app.use((req, _res, next) => {
+      if (!req.headers["x-forwarded-proto"]) {
+        req.headers["x-forwarded-proto"] = "https";
+      }
+      next();
+    });
+  }
+
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "fish_tokri_secret",
     resave: false,

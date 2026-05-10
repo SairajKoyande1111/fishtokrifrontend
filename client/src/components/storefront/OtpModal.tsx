@@ -176,10 +176,10 @@ export function OtpModal({ open, onClose }: OtpModalProps) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Invalid OTP");
-      // Directly populate the cache with the returned customer data so the
-      // user is immediately logged in without waiting for a session round-trip
+      // Directly populate the cache with the returned customer data.
+      // Do NOT call refetch() here — a refetch hitting a 401 would
+      // overwrite this data and log the user back out immediately.
       queryClient.setQueryData(["/api/customer/me"], data);
-      refetch();
       setShowSuccess(true);
       setTimeout(() => onClose(), 2500);
     } catch (err: any) {
