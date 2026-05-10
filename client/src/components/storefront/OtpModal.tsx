@@ -8,7 +8,7 @@ import successAnimation from "@assets/animation-original_(10)_1777277220026.json
 import flagImg from "@assets/flag_(1)_1776403319572.png";
 import { FishTokriLogo } from "@/components/storefront/FishTokriLogo";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { User } from "lucide-react";
+import userImg from "@assets/user_(1)_1774707188827.png";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -199,7 +199,7 @@ export function OtpModal({ open, onClose }: OtpModalProps) {
         {/* Header — matches Order Summary style */}
         <SheetHeader className="px-5 py-4 border-b border-border/30 bg-white sticky top-0 z-10">
           <SheetTitle className="flex items-center gap-2 text-xl font-bold text-foreground">
-            <User className="w-5 h-5" />
+            <img src={userImg} alt="Login" className="w-5 h-5 object-contain" />
             Login
           </SheetTitle>
         </SheetHeader>

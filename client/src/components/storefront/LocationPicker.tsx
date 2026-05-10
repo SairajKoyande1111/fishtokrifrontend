@@ -5,6 +5,7 @@ import { useHub, SuperHub, SubHub } from "@/context/HubContext";
 import { FishTokriLogo } from "@/components/storefront/FishTokriLogo";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
 import googleMapsIcon from "@assets/logo_(15)_1778186984164.png";
+import locationImg from "@assets/placeholder_(1)_1774706943633.png";
 
 type GeoStatus = "idle" | "detecting" | "serviceable" | "unserviceable" | "denied" | "error";
 
@@ -289,7 +290,7 @@ export function LocationPicker() {
                   <ChevronLeft className="w-5 h-5 text-slate-600" />
                 </button>
               )}
-              <MapPin className="w-5 h-5 text-foreground" />
+              <img src={locationImg} alt="Location" className="w-5 h-5 object-contain" />
               <span className="text-xl font-bold text-foreground">
                 {step === "sub" ? `Areas in ${pickedSuper?.name}` : "Select your location"}
               </span>
@@ -304,10 +305,10 @@ export function LocationPicker() {
               )}
               <button
                 onClick={closePicker}
-                className="flex items-center justify-center w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all duration-200"
+                className="flex items-center justify-center w-9 h-9 rounded-full bg-[#364F9F] text-white transition-all duration-200 hover:bg-[#2a3d7a] shadow-md"
                 data-testid="button-location-close"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
           </div>
