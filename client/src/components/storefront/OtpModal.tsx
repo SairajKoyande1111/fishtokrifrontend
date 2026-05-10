@@ -7,7 +7,8 @@ import otpAnimation from "@assets/animation-original_1776421716629.json";
 import successAnimation from "@assets/animation-original_(10)_1777277220026.json";
 import flagImg from "@assets/flag_(1)_1776403319572.png";
 import { FishTokriLogo } from "@/components/storefront/FishTokriLogo";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { User } from "lucide-react";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -195,6 +196,14 @@ export function OtpModal({ open, onClose }: OtpModalProps) {
           <SheetTitle>Login to FishTokri</SheetTitle>
         </VisuallyHidden>
 
+        {/* Header — matches Order Summary style */}
+        <SheetHeader className="px-5 py-4 border-b border-border/30 bg-white sticky top-0 z-10">
+          <SheetTitle className="flex items-center gap-2 text-xl font-bold text-foreground">
+            <User className="w-5 h-5" />
+            Login
+          </SheetTitle>
+        </SheetHeader>
+
         {/* Success Overlay */}
         <AnimatePresence>
           {showSuccess && (
@@ -213,7 +222,7 @@ export function OtpModal({ open, onClose }: OtpModalProps) {
           )}
         </AnimatePresence>
 
-        <div className="flex flex-col flex-1 px-7 pt-16 pb-8">
+        <div className="flex flex-col flex-1 px-7 pt-8 pb-8">
           {/* Logo — always visible */}
           <div className="flex justify-center mb-5">
             <FishTokriLogo className="h-16 w-auto" />

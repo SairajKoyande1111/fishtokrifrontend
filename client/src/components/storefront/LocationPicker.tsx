@@ -276,48 +276,40 @@ export function LocationPicker() {
       {/* Main panel */}
       <div className="relative bg-white w-full h-full sm:max-w-md rounded-none border-l border-border/30 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 max-h-screen font-[Poppins,sans-serif]">
 
-        {/* Premium blue header */}
-        <div className="shrink-0 bg-[#364F9F] px-5 pt-5 pb-5">
-          {/* Top row: back button (if sub step) + close button */}
-          <div className="flex items-center justify-between mb-4">
-            <div>
+        {/* White header — matches Order Summary style */}
+        <div className="shrink-0 px-5 py-4 border-b border-border/30 bg-white sticky top-0 z-10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               {step === "sub" && (
                 <button
                   onClick={() => setStep("super")}
-                  className="p-1.5 rounded-full bg-white/15 hover:bg-white/25 transition-colors"
+                  className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors mr-1"
                   data-testid="button-location-back"
                 >
-                  <ChevronLeft className="w-5 h-5 text-white" />
+                  <ChevronLeft className="w-5 h-5 text-slate-600" />
                 </button>
               )}
-            </div>
-            <button
-              onClick={closePicker}
-              className="flex items-center justify-center w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 text-white transition-all duration-200"
-              data-testid="button-location-close"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Title left, pill right */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-semibold text-white leading-tight">
+              <MapPin className="w-5 h-5 text-foreground" />
+              <span className="text-xl font-bold text-foreground">
                 {step === "sub" ? `Areas in ${pickedSuper?.name}` : "Select your location"}
-              </h2>
-              <p className="text-white/70 text-sm mt-0.5 font-normal">
-                {step === "sub" ? "Pick your delivery area below" : "Search your area or detect automatically"}
-              </p>
+              </span>
             </div>
-            {/* Current location pill — orange bg, no icon, white text, right side */}
-            {(selectedSubHub || selectedSuperHub) && (
-              <div className="shrink-0 rounded-full px-5 py-2" style={{ backgroundColor: BRAND_ORANGE }}>
-                <span className="text-base font-bold text-white">
-                  {selectedSubHub ? selectedSubHub.name : selectedSuperHub?.name}
-                </span>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {(selectedSubHub || selectedSuperHub) && (
+                <div className="shrink-0 rounded-full px-4 py-1.5" style={{ backgroundColor: BRAND_ORANGE }}>
+                  <span className="text-sm font-bold text-white">
+                    {selectedSubHub ? selectedSubHub.name : selectedSuperHub?.name}
+                  </span>
+                </div>
+              )}
+              <button
+                onClick={closePicker}
+                className="flex items-center justify-center w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all duration-200"
+                data-testid="button-location-close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 

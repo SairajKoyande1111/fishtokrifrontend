@@ -17,7 +17,7 @@ export function Footer() {
     <footer className="bg-[#364F9F] text-white mt-12">
       <div className="max-w-7xl mx-auto px-5 sm:px-8 pt-10 pb-6">
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-x-4 gap-y-8 mb-8">
 
           {/* Brand Column */}
           <div className="sm:col-span-2 lg:col-span-1">
@@ -96,7 +96,7 @@ export function Footer() {
             <h4 className="font-semibold text-white text-sm uppercase tracking-widest mb-4">
               Contact Us
             </h4>
-            <ul className="space-y-3 mb-4">
+            <ul className="space-y-3">
               <li className="flex items-start gap-2.5">
                 <img src={pinIcon} alt="" aria-hidden className="w-4 h-4 shrink-0 mt-0.5" style={whiteFilter} />
                 <span className="text-white text-sm leading-snug">
@@ -122,19 +122,24 @@ export function Footer() {
                 </span>
               </li>
               <li className="flex items-center gap-2.5">
-                <span className="text-white/70 text-xs font-medium">GSTIN:</span>
+                <span className="text-white text-sm font-medium">GSTIN:</span>
                 <span className="text-white text-sm font-medium tracking-wide">27AAOCA7628P1ZT</span>
               </li>
             </ul>
+          </div>
 
-            {/* Google Maps embed */}
-            <div className="rounded-xl overflow-hidden border border-white/20 w-full" style={{ height: "160px" }}>
+          {/* Map Column */}
+          <div className="flex flex-col">
+            <h4 className="font-semibold text-white text-sm uppercase tracking-widest mb-4 opacity-0 select-none hidden lg:block">
+              Map
+            </h4>
+            <div className="rounded-xl overflow-hidden border border-white/20 w-full flex-1" style={{ minHeight: "200px" }}>
               <iframe
                 title="FishTokri Location"
                 src="https://maps.google.com/maps?q=Shiva+Nand+Society+Jambli+Naka+Khartan+Road+Thane+West+Thane+400601+Maharashtra&output=embed"
                 width="100%"
-                height="160"
-                style={{ border: 0 }}
+                height="100%"
+                style={{ border: 0, minHeight: "200px" }}
                 allowFullScreen
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
@@ -155,7 +160,7 @@ export function Footer() {
               href="https://www.airavatatechnologies.com/"
               target="_blank"
               rel="noreferrer"
-              className="text-white hover:opacity-75 transition-opacity font-medium no-underline"
+              className="text-white hover:opacity-75 transition-opacity font-medium"
               style={{ textDecoration: "none" }}
             >
               AIRAVATA TECHNOLOGIES
