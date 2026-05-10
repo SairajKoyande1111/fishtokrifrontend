@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useCustomer } from "@/context/CustomerContext";
 import Lottie from "lottie-react";
@@ -79,6 +80,7 @@ export function OtpModal({ open, onClose }: OtpModalProps) {
   const [focusedOtpIndex, setFocusedOtpIndex] = useState<number | null>(null);
   const { toast } = useToast();
   const { refetch } = useCustomer();
+  const queryClient = useQueryClient();
 
   const phoneRef = useRef<HTMLInputElement>(null);
   const o0 = useRef<HTMLInputElement>(null);
@@ -118,6 +120,7 @@ export function OtpModal({ open, onClose }: OtpModalProps) {
       const res = await fetch("/api/customer/request-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ phone }),
       });
       if (!res.ok) {
@@ -168,10 +171,14 @@ export function OtpModal({ open, onClose }: OtpModalProps) {
       const res = await fetch("/api/customer/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ phone, otp: otpValue }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Invalid OTP");
+      // Directly populate the cache with the returned customer data so the
+      // user is immediately logged in without waiting for a session round-trip
+      queryClient.setQueryData(["/api/customer/me"], data);
       refetch();
       setShowSuccess(true);
       setTimeout(() => onClose(), 2500);

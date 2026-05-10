@@ -32,25 +32,27 @@ async function comparePasswords(supplied: string, stored: string) {
 export function setupAuth(app: Express) {
   const mongoUri = process.env.MONGODB_URI!;
 
+  // Always trust the first proxy (Nginx on VPS, Replit's proxy in dev)
+  app.set("trust proxy", 1);
+
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "fish_tokri_secret",
     resave: false,
     saveUninitialized: false,
+    rolling: true, // Refresh cookie expiry on every request
     store: MongoStore.create({
       mongoUrl: mongoUri,
       dbName: "fishtokri_admin",
       collectionName: "sessions",
+      ttl: 30 * 24 * 60 * 60, // 30 days in seconds
     }),
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
     },
   };
-
-  if (process.env.NODE_ENV === "production") {
-    app.set("trust proxy", 1);
-  }
 
   app.use(session(sessionSettings));
   app.use(passport.initialize());

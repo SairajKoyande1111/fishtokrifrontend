@@ -26,7 +26,7 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
   const { data: customer = null, isLoading, refetch } = useQuery<Customer | null>({
     queryKey: ["/api/customer/me"],
     queryFn: async () => {
-      const res = await fetch("/api/customer/me");
+      const res = await fetch("/api/customer/me", { credentials: "include" });
       if (res.status === 401) return null;
       if (!res.ok) return null;
       return res.json();
