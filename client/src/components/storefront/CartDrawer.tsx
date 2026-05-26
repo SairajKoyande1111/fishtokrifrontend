@@ -116,7 +116,7 @@ function photonSubtitle(f: PhotonFeature): string {
 }
 
 export function CartDrawer() {
-  const { isCartOpen, setIsCartOpen, items, updateQuantity, updateInstruction, totalPrice, clearCart } = useCart();
+  const { isCartOpen, setIsCartOpen, items, updateQuantity, updateInstruction, totalPrice, clearCart, appliedCoupon, setAppliedCoupon, discountAmount } = useCart();
   const { mutate: createOrder, isPending } = useCreateOrder();
   const { customer } = useCustomer();
   const queryClient = useQueryClient();
@@ -127,11 +127,9 @@ export function CartDrawer() {
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "online">("cod");
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [selectedTimeslotId, setSelectedTimeslotId] = useState<string | null>(null);
-  const [selectedNextDaySubSlotId, setSelectedNextDaySubSlotId] = useState<string | null>(null);
   const [expandedInstructions, setExpandedInstructions] = useState<Record<number, boolean>>({});
 
   // Coupon state
-  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponInput, setCouponInput] = useState("");
   const [couponError, setCouponError] = useState("");
   const [showAllCoupons, setShowAllCoupons] = useState(false);
@@ -155,12 +153,6 @@ export function CartDrawer() {
 
   const isCouponExhausted = (c: Coupon) => !!customer && !!(userCouponUsage[c.code]?.isExhausted);
   const isCouponApplicable = (c: Coupon) => c.isActive && c.minOrderAmount <= totalPrice && !isCouponExhausted(c);
-
-  const discountAmount = appliedCoupon
-    ? appliedCoupon.type === "flat"
-      ? Math.min(appliedCoupon.discountValue, totalPrice)
-      : Math.round((totalPrice * appliedCoupon.discountValue) / 100)
-    : 0;
 
   const validateCouponViaApi = async (code: string): Promise<{ valid: boolean; message: string }> => {
     const res = await fetch("/api/coupon/apply", {
@@ -212,23 +204,9 @@ export function CartDrawer() {
     await applyCartCoupon(coupon);
   };
 
-  const removeCoupon = () => {
-    setAppliedCoupon(null);
-    setCouponError("");
-  };
-
-  // Auto-invalidate coupon if cart total drops below coupon minimum
-  useEffect(() => {
-    if (appliedCoupon && appliedCoupon.minOrderAmount > totalPrice) {
-      setAppliedCoupon(null);
-      setCouponError(`Coupon removed — cart total fell below ₹${appliedCoupon.minOrderAmount}`);
-    }
-  }, [totalPrice, appliedCoupon]);
-
-  // Clear coupon when cart is emptied
+  // Clear coupon input when cart is emptied
   useEffect(() => {
     if (items.length === 0) {
-      setAppliedCoupon(null);
       setCouponError("");
       setCouponInput("");
     }
@@ -255,38 +233,12 @@ export function CartDrawer() {
     return now < slotEnd;
   }, []);
 
-  const nextDayDate = new Date();
-  nextDayDate.setDate(nextDayDate.getDate() + 1);
-  const nextDayLabel = nextDayDate.toLocaleDateString("en-IN", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
-
-  const NEXT_DAY_TIMESLOT: Timeslot & { isNextDay?: boolean } = {
-    id: "next-day",
-    label: `Next Day Delivery · ${nextDayLabel}`,
-    startTime: "7:00 AM",
-    endTime: "9:00 PM",
-    isInstant: false,
-    extraCharge: 0,
-    isActive: true,
-    sortOrder: 999,
-    isNextDay: true,
-  } as any;
-
-  const filteredTimeslots = timeslots.filter(isSlotAvailable);
-  const availableTimeslots: (Timeslot & { isNextDay?: boolean })[] = [
-    ...filteredTimeslots,
-    NEXT_DAY_TIMESLOT,
-  ];
-
+  const availableTimeslots = timeslots.filter(isSlotAvailable);
   const selectedTimeslot = availableTimeslots.find(t => t.id === selectedTimeslotId) ?? null;
 
   useEffect(() => {
     if (selectedTimeslotId && !availableTimeslots.find(t => t.id === selectedTimeslotId)) {
       setSelectedTimeslotId(null);
-      setSelectedNextDaySubSlotId(null);
     }
   }, [availableTimeslots, selectedTimeslotId]);
 
@@ -490,17 +442,9 @@ export function CartDrawer() {
     }
     const fullAddress = [selected.building, selected.street, selected.area, selected.pincode].filter(Boolean).join(", ");
     const orderItems = items.map(i => ({ productId: i.originalId ?? String(i.id), quantity: i.quantity, name: i.name, price: i.price, imageUrl: i.imageUrl ?? null }));
-    const isNextDay = (selectedTimeslot as any).isNextDay === true;
-    const nextDaySubSlot = isNextDay ? timeslots.find(t => t.id === selectedNextDaySubSlotId) : null;
-    if (isNextDay && !nextDaySubSlot) {
-      toast({ title: "Please pick a delivery window for next day", variant: "destructive" });
-      return;
-    }
     const slotLabel = selectedTimeslot.isInstant
       ? "Instant Delivery (Porter)"
-      : isNextDay && nextDaySubSlot
-        ? `${selectedTimeslot.label} · ${nextDaySubSlot.label} (${nextDaySubSlot.startTime} – ${nextDaySubSlot.endTime})`
-        : `${selectedTimeslot.label} (${selectedTimeslot.startTime} – ${selectedTimeslot.endTime})`;
+      : `${selectedTimeslot.label} (${selectedTimeslot.startTime} – ${selectedTimeslot.endTime})`;
     createOrder(
       {
         customerName: selected.name || customer?.name || "",
@@ -509,7 +453,7 @@ export function CartDrawer() {
         address: fullAddress,
         notes: selected.instructions,
         items: orderItems,
-        deliveryType: selectedTimeslot.isInstant ? "instant" : isNextDay ? "next-day" : "slot",
+        deliveryType: selectedTimeslot.isInstant ? "instant" : "slot",
         timeslotLabel: slotLabel,
         instantDeliveryCharge: selectedTimeslot.isInstant ? selectedTimeslot.extraCharge : null,
         couponCode: appliedCoupon?.code ?? null,
@@ -759,7 +703,7 @@ export function CartDrawer() {
                                   </div>
                                 </div>
                                 <button
-                                  onClick={removeCoupon}
+                                  onClick={() => { setAppliedCoupon(null); setCouponError(""); }}
                                   className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center shrink-0 transition-colors ml-3"
                                   aria-label="Remove coupon"
                                   data-testid="button-remove-coupon"
@@ -1222,19 +1166,12 @@ export function CartDrawer() {
                             </div>
                           ) : (
                             availableTimeslots.map(slot => {
-                              const isNextDay = (slot as any).isNextDay === true;
                               const isSelected = selectedTimeslotId === slot.id;
                               return (
                               <div key={slot.id}>
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    setSelectedTimeslotId(slot.id);
-                                    if (!isNextDay) {
-                                      setSelectedNextDaySubSlotId(null);
-                                      setTimeslotExpanded(false);
-                                    }
-                                  }}
+                                  onClick={() => { setSelectedTimeslotId(slot.id); setTimeslotExpanded(false); }}
                                   className={`w-full text-left px-3 py-2.5 rounded-xl border-2 transition-all ${isSelected ? (slot.isInstant ? "border-amber-500 bg-amber-50" : "border-[#364F9F] bg-[#364F9F]/5") : "border-border/40 bg-white hover:border-[#364F9F]/30"}`}
                                   data-testid={`timeslot-${slot.id}`}
                                 >
@@ -1242,26 +1179,9 @@ export function CartDrawer() {
                                     <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isSelected ? (slot.isInstant ? "border-amber-500" : "border-[#364F9F]") : "border-slate-300"}`}>
                                       {isSelected && <div className={`w-2 h-2 rounded-full ${slot.isInstant ? "bg-amber-500" : "bg-[#364F9F]"}`} />}
                                     </div>
-                                    {isNextDay && (
-                                      <span
-                                        aria-hidden
-                                        className="w-4 h-4 inline-block flex-shrink-0"
-                                        style={{
-                                          backgroundColor: "#364F9F",
-                                          WebkitMaskImage: `url(${iconScheduleImg})`,
-                                          maskImage: `url(${iconScheduleImg})`,
-                                          WebkitMaskRepeat: "no-repeat",
-                                          maskRepeat: "no-repeat",
-                                          WebkitMaskSize: "contain",
-                                          maskSize: "contain",
-                                          WebkitMaskPosition: "center",
-                                          maskPosition: "center",
-                                        }}
-                                      />
-                                    )}
-                                    <span className={`text-sm font-semibold flex-1 min-w-0 truncate ${slot.isInstant ? "text-amber-700" : isNextDay ? "text-[#364F9F]" : "text-foreground"}`}>
+                                    <span className={`text-sm font-semibold flex-1 min-w-0 truncate ${slot.isInstant ? "text-amber-700" : "text-foreground"}`}>
                                       {slot.label}
-                                      {!isNextDay && slot.startTime && slot.endTime && (
+                                      {slot.startTime && slot.endTime && (
                                         <span className="font-normal text-muted-foreground"> · {slot.startTime}–{slot.endTime}</span>
                                       )}
                                     </span>
@@ -1272,36 +1192,6 @@ export function CartDrawer() {
                                     ) : null}
                                   </div>
                                 </button>
-
-                                {isNextDay && isSelected && (
-                                  <div className="mt-2 ml-2 pl-3 border-l-2 border-[#364F9F]/30 space-y-1.5" data-testid="next-day-subslots">
-                                    <p className="text-[11px] font-semibold text-[#364F9F] uppercase tracking-wide mb-1.5">Pick a delivery window</p>
-                                    {timeslots.filter(t => !t.isInstant).map(sub => {
-                                      const isSubSelected = selectedNextDaySubSlotId === sub.id;
-                                      return (
-                                        <button
-                                          key={sub.id}
-                                          type="button"
-                                          onClick={() => setSelectedNextDaySubSlotId(sub.id)}
-                                          className={`w-full text-left px-3 py-2 rounded-lg border transition-all ${isSubSelected ? "border-[#F05B4E] bg-[#F05B4E]/5" : "border-border/40 bg-white hover:border-[#F05B4E]/40"}`}
-                                          data-testid={`next-day-sub-${sub.id}`}
-                                        >
-                                          <div className="flex items-center gap-2.5">
-                                            <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isSubSelected ? "border-[#F05B4E]" : "border-slate-300"}`}>
-                                              {isSubSelected && <div className="w-1.5 h-1.5 rounded-full bg-[#F05B4E]" />}
-                                            </div>
-                                            <span className={`text-xs font-medium flex-1 min-w-0 truncate ${isSubSelected ? "text-[#F05B4E]" : "text-foreground"}`}>
-                                              {sub.label}
-                                              {sub.startTime && sub.endTime && (
-                                                <span className="font-normal text-muted-foreground"> · {sub.startTime}–{sub.endTime}</span>
-                                              )}
-                                            </span>
-                                          </div>
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                )}
                               </div>
                             );})
                           )}

@@ -223,115 +223,107 @@ export default function Home() {
           <SwipeHint />
         </div>
 
-        {/* ── Combos Special (hardcoded, always first) ── */}
-        {combos.length > 0 && (() => {
-          const productMap = Object.fromEntries((products ?? []).map(p => [p.id, p]));
-          return (
-            <section className="mb-7">
-              <div className="flex items-center gap-2 mb-3">
-                <h2 className="text-xl sm:text-2xl font-medium text-foreground uppercase tracking-wide">
-                  Combos Special
-                </h2>
-              </div>
-              <div className="flex overflow-x-auto gap-4 sm:gap-5 scrollbar-hide snap-x pb-2">
-                {combos.map(combo => {
-                  const comboImages = combo.includes
-                    .map(inc => {
-                      const product = productMap[inc.productId];
-                      return product?.imageUrl || (product ? getFallbackImage(product.category) : null);
-                    })
-                    .filter(Boolean) as string[];
-                  const computedPct = combo.originalPrice > 0
-                    ? Math.round(((combo.originalPrice - combo.discountedPrice) / combo.originalPrice) * 100)
-                    : 0;
-                  const showPct = combo.discount && combo.discount > 0 ? combo.discount : computedPct;
-                  return (
-                    <div key={combo.id} className="w-[340px] sm:w-[400px] flex-none snap-start">
-                      <div className="group relative bg-card flex flex-col h-full transition-all duration-300 cursor-pointer">
-                        <Link href={`/combo/${combo.id}`}>
-                          <div className="relative aspect-[10/7] w-full bg-muted/30 overflow-hidden mb-3 border border-border/20 rounded-xl">
-                            <ComboImages images={comboImages} />
-                            {/* Combo Saver ribbon badge */}
-                            <div className="absolute top-0 left-0 z-10">
-                              <div className="relative bg-accent text-white pl-3 pr-5 py-2 shadow-md rounded-tl-xl">
-                                <div className="text-[11px] sm:text-xs font-bold leading-tight uppercase tracking-wide">
-                                  Combo
+        {/* Dynamic Sections from DB — products and combos */}
+        {sections.map((section) => {
+          if (section.type === "combos") {
+            const productMap = Object.fromEntries((products ?? []).map(p => [p.id, p]));
+            // Filter combos: hide if any included product is unavailable due to expired batches
+            const availableCombos = combos.filter(combo =>
+              combo.includes.every(inc => {
+                const p = productMap[inc.productId];
+                return !p || p.status !== "unavailable";
+              })
+            );
+            return (
+              <section key={section.id} className="mb-7">
+                <div className="flex items-center gap-2 mb-3">
+                  <h2 className="text-xl sm:text-2xl font-medium text-foreground uppercase tracking-wide">
+                    {section.title}
+                  </h2>
+                </div>
+                {availableCombos.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4">No combos available yet.</p>
+                ) : (
+                  <>
+                    <div className="flex overflow-x-auto gap-4 sm:gap-5 scrollbar-hide snap-x pb-2">
+                      {availableCombos.map(combo => {
+                        const comboImages = combo.includes
+                          .map(inc => {
+                            const product = productMap[inc.productId];
+                            return product?.imageUrl || (product ? getFallbackImage(product.category) : null);
+                          })
+                          .filter(Boolean) as string[];
+                        const computedPct = combo.originalPrice > 0
+                          ? Math.round(((combo.originalPrice - combo.discountedPrice) / combo.originalPrice) * 100)
+                          : 0;
+                        const showPct = combo.discount && combo.discount > 0 ? combo.discount : computedPct;
+                        return (
+                          <div key={combo.id} className="w-[340px] sm:w-[400px] flex-none snap-start">
+                            <div className="group relative bg-card flex flex-col h-full transition-all duration-300 cursor-pointer">
+                              <Link href={`/combo/${combo.id}`}>
+                                <div className="relative aspect-[10/7] w-full bg-muted/30 overflow-hidden mb-3 border border-border/20 rounded-xl">
+                                  <ComboImages images={comboImages} />
+                                  <div className="absolute top-0 left-0 z-10">
+                                    <div className="relative bg-accent text-white pl-3 pr-5 py-2 shadow-md rounded-tl-xl">
+                                      <div className="text-[11px] sm:text-xs font-bold leading-tight uppercase tracking-wide">Combo</div>
+                                      <div className="text-[11px] sm:text-xs font-bold leading-tight uppercase tracking-wide">Saver</div>
+                                      <div
+                                        className="absolute top-0 right-0 h-full w-3"
+                                        style={{ background: "hsl(var(--accent))", clipPath: "polygon(0 0, 100% 50%, 0 100%)", transform: "translateX(100%)" }}
+                                      />
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="text-[11px] sm:text-xs font-bold leading-tight uppercase tracking-wide">
-                                  Saver
+                              </Link>
+                              <div className="flex-1 flex flex-col px-1">
+                                <Link href={`/combo/${combo.id}`}>
+                                  <h3 className="font-sans font-medium text-base sm:text-lg text-foreground leading-snug mb-1.5 line-clamp-2 hover:text-primary transition-colors">
+                                    {combo.name}
+                                  </h3>
+                                </Link>
+                                <p className="text-sm text-muted-foreground mb-2.5 font-normal line-clamp-2">{combo.description}</p>
+                                <div className="flex items-center justify-between mt-auto pt-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-lg sm:text-xl font-semibold text-foreground">₹{combo.discountedPrice}</span>
+                                    {combo.originalPrice > combo.discountedPrice && (
+                                      <span className="text-sm text-muted-foreground line-through">₹{combo.originalPrice}</span>
+                                    )}
+                                    {showPct > 0 && (
+                                      <span className="text-sm font-semibold text-green-600" data-testid={`text-combo-discount-${combo.id}`}>{showPct}% off</span>
+                                    )}
+                                  </div>
+                                  <Button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      addToCart({
+                                        id: -Math.abs(parseInt(combo.id.slice(-6), 16) || 9999),
+                                        name: combo.name, price: combo.discountedPrice,
+                                        category: "Combo", status: "available",
+                                        unit: combo.weight, imageUrl: null,
+                                        isArchived: false, updatedAt: new Date(),
+                                        limitedStockNote: null, sectionId: null, isCombo: true,
+                                      } as any);
+                                    }}
+                                    className="rounded-full w-9 h-9 p-0 bg-primary hover:bg-[#F05B4E] text-white shadow-md flex items-center justify-center shrink-0 transition-colors"
+                                    size="icon"
+                                    data-testid={`button-add-combo-${combo.id}`}
+                                  >
+                                    <Plus className="w-5 h-5 text-white" />
+                                  </Button>
                                 </div>
-                                {/* Notch on the right side of ribbon */}
-                                <div
-                                  className="absolute top-0 right-0 h-full w-3"
-                                  style={{
-                                    background: "hsl(var(--accent))",
-                                    clipPath: "polygon(0 0, 100% 50%, 0 100%)",
-                                    transform: "translateX(100%)",
-                                  }}
-                                />
                               </div>
                             </div>
                           </div>
-                        </Link>
-                        <div className="flex-1 flex flex-col px-1">
-                          <Link href={`/combo/${combo.id}`}>
-                            <h3 className="font-sans font-medium text-base sm:text-lg text-foreground leading-snug mb-1.5 line-clamp-2 hover:text-primary transition-colors">
-                              {combo.name}
-                            </h3>
-                          </Link>
-                          <p className="text-sm text-muted-foreground mb-2.5 font-normal line-clamp-2">
-                            {combo.description}
-                          </p>
-                          <div className="flex items-center justify-between mt-auto pt-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-lg sm:text-xl font-semibold text-foreground">₹{combo.discountedPrice}</span>
-                              {combo.originalPrice > combo.discountedPrice && (
-                                <span className="text-sm text-muted-foreground line-through">₹{combo.originalPrice}</span>
-                              )}
-                              {showPct > 0 && (
-                                <span className="text-sm font-semibold text-green-600" data-testid={`text-combo-discount-${combo.id}`}>
-                                  {showPct}% off
-                                </span>
-                              )}
-                            </div>
-                            <Button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                addToCart({
-                                  id: -Math.abs(parseInt(combo.id.slice(-6), 16) || 9999),
-                                  name: combo.name,
-                                  price: combo.discountedPrice,
-                                  category: "Combo",
-                                  status: "available",
-                                  unit: combo.weight,
-                                  imageUrl: null,
-                                  isArchived: false,
-                                  updatedAt: new Date(),
-                                  limitedStockNote: null,
-                                  sectionId: null,
-                                  isCombo: true,
-                                } as any);
-                              }}
-                              className="rounded-full w-9 h-9 p-0 bg-primary hover:bg-[#F05B4E] text-white shadow-md flex items-center justify-center shrink-0 transition-colors"
-                              size="icon"
-                              data-testid={`button-add-combo-${combo.id}`}
-                            >
-                              <Plus className="w-5 h-5 text-white" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
-              <SwipeHint />
-            </section>
-          );
-        })()}
+                    <SwipeHint />
+                  </>
+                )}
+              </section>
+            );
+          }
 
-        {/* Dynamic Sections from DB (skip combos type — handled above) */}
-        {sections.filter(s => s.type !== "combos").map((section) => {
           // "products" type section
           const sectionProducts = getSectionProducts(section.id);
           return (

@@ -2,6 +2,7 @@ import { useRoute, useLocation } from "wouter";
 import { useProducts } from "@/hooks/use-products";
 import { useProductCoupons } from "@/hooks/use-coupons";
 import { useCart } from "@/context/CartContext";
+import { useCustomer } from "@/context/CustomerContext";
 import { Header } from "@/components/storefront/Header";
 import { Footer } from "@/components/storefront/Footer";
 import { CartDrawer } from "@/components/storefront/CartDrawer";
@@ -44,13 +45,7 @@ function getFallbackImage(category: string) {
   }
 }
 
-function CouponCard({ code, description }: { code: string; description: string; color?: string }) {
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+function CouponCard({ code, description, onApply, isApplied }: { code: string; description: string; color?: string; onApply: () => void; isApplied: boolean }) {
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-background hover:bg-muted/10 transition-colors">
       <div className="flex items-start gap-2.5 min-w-0 flex-1">
@@ -80,12 +75,12 @@ function CouponCard({ code, description }: { code: string; description: string; 
         </div>
       </div>
       <button
-        onClick={copy}
-        className="flex items-center gap-1 text-xs font-semibold ml-3 shrink-0 transition-colors hover:opacity-80"
-        style={{ color: "#364F9F" }}
+        onClick={onApply}
+        className="flex items-center gap-1 text-xs font-bold ml-3 shrink-0 px-3 py-1.5 rounded-full text-white transition-colors"
+        style={{ backgroundColor: isApplied ? "#047857" : "#364F9F" }}
       >
-        {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-        {copied ? "Copied" : "Copy"}
+        {isApplied && <Check className="w-3 h-3" />}
+        {isApplied ? "Applied" : "Apply"}
       </button>
     </div>
   );
@@ -155,7 +150,8 @@ export default function ProductDetail() {
   const [, params] = useRoute("/product/:id");
   const [, setLocation] = useLocation();
   const { data: products, isLoading } = useProducts();
-  const { addToCart } = useCart();
+  const { addToCart, appliedCoupon, setAppliedCoupon } = useCart();
+  const { customer, openLoginModal } = useCustomer();
   const [qty, setQty] = useState(1);
   const recipeScrollRef = useRef<HTMLDivElement>(null);
   const similarScrollRef = useRef<HTMLDivElement>(null);
@@ -391,7 +387,10 @@ export default function ProductDetail() {
                 </button>
               </div>
               <Button
-                onClick={() => { for (let i = 0; i < qty; i++) addToCart(product, 1, true); }}
+                onClick={() => {
+                  if (!customer) { openLoginModal(); return; }
+                  for (let i = 0; i < qty; i++) addToCart(product, 1, true);
+                }}
                 disabled={isUnavailable}
                 className="flex-1 h-11 rounded-full bg-primary hover:bg-primary/90 text-white font-semibold text-sm shadow-md"
               >
@@ -430,7 +429,14 @@ export default function ProductDetail() {
 
                 <div className="flex flex-col divide-y divide-border/20 border-t border-border/20">
                   {(showAllCoupons ? liveCoupons : liveCoupons.slice(0, 3)).map((c) => (
-                    <CouponCard key={c.id} code={c.code} description={c.description} color={c.color} />
+                    <CouponCard
+                      key={c.id}
+                      code={c.code}
+                      description={c.description}
+                      color={c.color}
+                      isApplied={appliedCoupon?.code === c.code}
+                      onApply={() => setAppliedCoupon(appliedCoupon?.code === c.code ? null : c)}
+                    />
                   ))}
                   {liveCoupons.length > 3 && (
                     <button

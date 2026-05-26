@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, ReactNode } from "react";
-import type { Product } from "@shared/schema";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import type { Product, Coupon } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useCustomer } from "@/context/CustomerContext";
 
@@ -22,6 +22,9 @@ interface CartContextType {
   totalPrice: number;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
+  appliedCoupon: Coupon | null;
+  setAppliedCoupon: (c: Coupon | null) => void;
+  discountAmount: number;
 }
 
 const CartContext = createContext<CartContextType | null>(null);
@@ -29,6 +32,7 @@ const CartContext = createContext<CartContextType | null>(null);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const { toast } = useToast();
   const { customer, openLoginModal } = useCustomer();
 
@@ -85,6 +89,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
     0
   );
 
+  const discountAmount = appliedCoupon
+    ? appliedCoupon.type === "flat"
+      ? Math.min(appliedCoupon.discountValue, totalPrice)
+      : Math.round((totalPrice * appliedCoupon.discountValue) / 100)
+    : 0;
+
+  // Auto-invalidate coupon if cart total drops below minimum
+  useEffect(() => {
+    if (appliedCoupon && appliedCoupon.minOrderAmount > totalPrice) {
+      setAppliedCoupon(null);
+    }
+  }, [totalPrice, appliedCoupon]);
+
+  // Clear coupon when cart is emptied
+  useEffect(() => {
+    if (items.length === 0) {
+      setAppliedCoupon(null);
+    }
+  }, [items.length]);
+
   return (
     <CartContext.Provider
       value={{
@@ -98,6 +122,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         totalPrice,
         isCartOpen,
         setIsCartOpen,
+        appliedCoupon,
+        setAppliedCoupon,
+        discountAmount,
       }}
     >
       {children}

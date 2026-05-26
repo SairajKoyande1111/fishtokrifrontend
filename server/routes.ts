@@ -138,27 +138,35 @@ export async function registerRoutes(
   };
 
   // ── Inline mappers ──────────────────────────────────────────────────────
-  const toProduct = (doc: any) => ({
-    id: doc._id.toString(), name: doc.name, category: doc.category,
-    subCategory: doc.subCategory ?? null, status: doc.status,
-    limitedStockNote: doc.limitedStockNote ?? null, price: doc.price ?? null,
-    originalPrice: doc.originalPrice ?? null, unit: doc.unit ?? null,
-    imageUrl: doc.imageUrl ?? null, isArchived: doc.isArchived ?? false,
-    updatedAt: doc.updatedAt, sectionId: doc.sectionId ?? null,
-    description: doc.description ?? null,
-    grossWeight: doc.grossWeight ?? null, netWeight: doc.netWeight ?? null,
-    pieces: doc.pieces ?? null, serves: doc.serves ?? null,
-    discountPct: doc.discountPct ?? null, quantity: doc.quantity ?? null,
-    couponIds: (doc.couponIds ?? []).map((id: any) => id.toString()),
-    recipes: (doc.recipes ?? []).map((r: any) => ({
-      title: r.title ?? "", description: r.description ?? "",
-      image: r.image ?? "", totalTime: r.totalTime ?? "",
-      prepTime: r.prepTime ?? "", cookTime: r.cookTime ?? "",
-      servings: r.servings ?? 2, difficulty: r.difficulty ?? "Medium",
-      ingredients: (r.ingredients ?? []).map((i: any) => String(i)),
-      method: (r.method ?? []).map((m: any) => String(m)),
-    })),
-  });
+  const toProduct = (doc: any) => {
+    const allBatches = doc.inventoryBatches ?? [];
+    const activeBatches = allBatches.filter((b: any) => b.remainingTime !== "expired");
+    // If product has batches and ALL are expired, mark as unavailable
+    const effectiveStatus = allBatches.length > 0 && activeBatches.length === 0
+      ? "unavailable"
+      : doc.status;
+    return {
+      id: doc._id.toString(), name: doc.name, category: doc.category,
+      subCategory: doc.subCategory ?? null, status: effectiveStatus,
+      limitedStockNote: doc.limitedStockNote ?? null, price: doc.price ?? null,
+      originalPrice: doc.originalPrice ?? null, unit: doc.unit ?? null,
+      imageUrl: doc.imageUrl ?? null, isArchived: doc.isArchived ?? false,
+      updatedAt: doc.updatedAt, sectionId: doc.sectionId ?? null,
+      description: doc.description ?? null,
+      grossWeight: doc.grossWeight ?? null, netWeight: doc.netWeight ?? null,
+      pieces: doc.pieces ?? null, serves: doc.serves ?? null,
+      discountPct: doc.discountPct ?? null, quantity: doc.quantity ?? null,
+      couponIds: (doc.couponIds ?? []).map((id: any) => id.toString()),
+      recipes: (doc.recipes ?? []).map((r: any) => ({
+        title: r.title ?? "", description: r.description ?? "",
+        image: r.image ?? "", totalTime: r.totalTime ?? "",
+        prepTime: r.prepTime ?? "", cookTime: r.cookTime ?? "",
+        servings: r.servings ?? 2, difficulty: r.difficulty ?? "Medium",
+        ingredients: (r.ingredients ?? []).map((i: any) => String(i)),
+        method: (r.method ?? []).map((m: any) => String(m)),
+      })),
+    };
+  };
 
   const toCoupon = (doc: any) => ({
     id: doc._id.toString(), code: doc.code, title: doc.title,
@@ -1111,20 +1119,11 @@ export async function registerRoutes(
   app.get("/api/timeslots", async (req, res) => {
     try {
       const hub = await getReqHubModels(req);
-      if (!hub) return res.json([INSTANT_TIMESLOT, ...DEFAULT_TIMESLOTS.map((s, i) => ({ ...s, id: `default-${i}` }))]);
-      // Upsert each default by label so new defaults appear without
-      // destroying existing custom slots or admin tweaks.
-      for (const slot of DEFAULT_TIMESLOTS) {
-        const existing = await hub.Timeslot.findOne({ label: slot.label }).lean();
-        if (!existing) {
-          await hub.Timeslot.create(slot);
-        }
-      }
+      if (!hub) return res.json([]);
       const docs = await hub.Timeslot.find({ isActive: true }).sort({ sortOrder: 1 }).lean();
-      // Always prepend instant delivery
-      res.json([INSTANT_TIMESLOT, ...docs.map(toTimeslot)]);
+      res.json(docs.map(toTimeslot));
     } catch {
-      res.json([INSTANT_TIMESLOT, ...DEFAULT_TIMESLOTS.map((s, i) => ({ ...s, id: `default-${i}` }))]);
+      res.json([]);
     }
   });
 

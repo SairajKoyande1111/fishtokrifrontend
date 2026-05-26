@@ -1,5 +1,6 @@
 import { useParams, useLocation } from "wouter";
 import { useCart } from "@/context/CartContext";
+import { useCustomer } from "@/context/CustomerContext";
 import { useCoupons } from "@/hooks/use-coupons";
 import { Header } from "@/components/storefront/Header";
 import { Footer } from "@/components/storefront/Footer";
@@ -9,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  ChevronLeft, ShoppingBag, Check, Copy, ChefHat,
+  ChevronLeft, ShoppingBag, Check, ChefHat,
   ExternalLink, Star, Sparkles, ShoppingBasket,
 } from "lucide-react";
 import Lottie from "lottie-react";
@@ -95,13 +96,7 @@ function ComboHeroImage({ productImages, productCategories, name, tags }: {
   );
 }
 
-function CouponCard({ code, desc }: { code: string; desc: string }) {
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+function CouponCard({ code, desc, onApply, isApplied }: { code: string; desc: string; onApply: () => void; isApplied: boolean }) {
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-background hover:bg-muted/10 transition-colors">
       <div className="flex items-start gap-2.5 min-w-0 flex-1">
@@ -131,12 +126,12 @@ function CouponCard({ code, desc }: { code: string; desc: string }) {
         </div>
       </div>
       <button
-        onClick={copy}
-        className="flex items-center gap-1 text-xs font-semibold ml-3 shrink-0 transition-colors hover:opacity-80"
-        style={{ color: "#364F9F" }}
+        onClick={onApply}
+        className="flex items-center gap-1 text-xs font-bold ml-3 shrink-0 px-3 py-1.5 rounded-full text-white transition-colors"
+        style={{ backgroundColor: isApplied ? "#047857" : "#364F9F" }}
       >
-        {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-        {copied ? "Copied" : "Copy"}
+        {isApplied && <Check className="w-3 h-3" />}
+        {isApplied ? "Applied" : "Apply"}
       </button>
     </div>
   );
@@ -345,7 +340,8 @@ function ComboCard({ combo, productMap }: { combo: Combo; productMap: Record<str
 export default function ComboDetail() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
-  const { addToCart, setIsCartOpen } = useCart();
+  const { addToCart, setIsCartOpen, appliedCoupon, setAppliedCoupon } = useCart();
+  const { customer, openLoginModal } = useCustomer();
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
   const [showAllCoupons, setShowAllCoupons] = useState(false);
@@ -420,24 +416,15 @@ export default function ComboDetail() {
   const allProductRecipes = includedProducts.flatMap(({ product }) => {
     if (!product) return [];
     const dbRecipes = product.recipes ?? [];
-    if (dbRecipes.length > 0) {
-      return dbRecipes.map((r: any) => ({
-        title: r.title ?? r.name,
-        description: r.description,
-        image: r.image ?? null,
-        totalTime: r.totalTime ?? "",
-        difficulty: r.difficulty ?? "",
-        productName: product.name,
-      }));
-    }
-    // Fall back to dummy recipes for the category
-    return getDummyDetail(product.category).recipes.map((r) => ({
-      title: r.name,
+    return dbRecipes.map((r: any, idx: number) => ({
+      title: r.title ?? r.name,
       description: r.description,
-      image: r.image,
-      totalTime: r.totalTime,
-      difficulty: r.difficulty,
+      image: r.image ?? null,
+      totalTime: r.totalTime ?? "",
+      difficulty: r.difficulty ?? "",
       productName: product.name,
+      productId: product.id,
+      recipeIndex: idx,
     }));
   });
 
@@ -454,6 +441,7 @@ export default function ComboDetail() {
 
   const handleAddToCart = () => {
     if (!combo) return;
+    if (!customer) { openLoginModal(); return; }
     for (let i = 0; i < qty; i++) {
       addToCart({
         id: -Math.abs(parseInt(combo.id.slice(-6), 16) || 9999),
@@ -698,7 +686,13 @@ export default function ComboDetail() {
 
                 <div className="flex flex-col divide-y divide-border/20 border-t border-border/20">
                   {(showAllCoupons ? liveCoupons : liveCoupons.slice(0, 3)).map((c) => (
-                    <CouponCard key={c.id} code={c.code} desc={c.description} />
+                    <CouponCard
+                      key={c.id}
+                      code={c.code}
+                      desc={c.description}
+                      isApplied={appliedCoupon?.code === c.code}
+                      onApply={() => setAppliedCoupon(appliedCoupon?.code === c.code ? null : c)}
+                    />
                   ))}
                   {liveCoupons.length > 3 && (
                     <button
@@ -769,7 +763,10 @@ export default function ComboDetail() {
                           </span>
                         )}
                       </div>
-                      <button className="mt-1 w-full text-sm font-semibold bg-accent text-white border border-accent rounded-full px-3 py-2 hover:bg-[#364F9F] hover:border-[#364F9F] hover:text-white transition-colors">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/recipe/product/${recipe.productId}/${recipe.recipeIndex}`); }}
+                        className="mt-1 w-full text-sm font-semibold bg-accent text-white border border-accent rounded-full px-3 py-2 hover:bg-[#364F9F] hover:border-[#364F9F] hover:text-white transition-colors"
+                      >
                         View Recipe
                       </button>
                     </div>
