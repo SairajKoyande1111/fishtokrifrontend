@@ -137,17 +137,17 @@ function CouponCard({ code, desc, onApply, isApplied }: { code: string; desc: st
   );
 }
 
-function IncludedProductCard({ item, product, comboDiscountRatio }: {
+function IncludedProductCard({ item, product, comboItemPrice }: {
   item: { productId: string; label: string };
   product?: Product;
-  comboDiscountRatio: number;
+  comboItemPrice: number | null;
 }) {
   const category = product?.category ?? "Fish";
   const img = product?.imageUrl || getFallbackImage(category);
 
-  const basePrice = product?.originalPrice ?? product?.price ?? null;
-  const showPricing = basePrice != null && comboDiscountRatio < 1 && comboDiscountRatio > 0;
-  const discountedPrice = showPricing ? Math.round(basePrice * comboDiscountRatio) : null;
+  // standalone price = what you'd pay buying this product separately
+  const standalonePrice = product?.price ?? product?.originalPrice ?? null;
+  const showPricing = standalonePrice != null && comboItemPrice != null && comboItemPrice < standalonePrice;
 
   const dummy = product ? getDummyDetail(product.category) : null;
   const piecesText = product?.pieces || dummy?.pieces;
@@ -176,10 +176,10 @@ function IncludedProductCard({ item, product, comboDiscountRatio }: {
               {product.unit ? ` · ${product.unit}` : product.weight ? ` · ${product.weight}` : ""}
             </p>
           )}
-          {showPricing && discountedPrice != null && (
+          {showPricing && comboItemPrice != null && standalonePrice != null && (
             <div className="flex items-center gap-2 mt-1.5">
-              <span className="text-base sm:text-lg font-bold text-foreground">₹{discountedPrice}</span>
-              <span className="text-sm text-muted-foreground line-through">₹{basePrice}</span>
+              <span className="text-base sm:text-lg font-bold text-foreground">₹{comboItemPrice}</span>
+              <span className="text-sm text-muted-foreground line-through">₹{standalonePrice}</span>
             </div>
           )}
 
@@ -382,7 +382,18 @@ export default function ComboDetail() {
 
   const otherCombos = allCombos.filter((c) => c.id !== id).slice(0, 8);
 
-  // Per-item discount ratio (applied uniformly to each included product)
+  // Per-item combo prices calculated proportionally from each product's current standalone price
+  const sumStandalonePrice = includedProducts.reduce((sum, { product }) => {
+    return sum + (product?.price ?? product?.originalPrice ?? 0);
+  }, 0);
+  const getComboItemPrice = (product: Product | undefined): number | null => {
+    if (!combo || !product || sumStandalonePrice <= 0) return null;
+    const standalonePrice = product.price ?? product.originalPrice;
+    if (standalonePrice == null) return null;
+    return Math.round((standalonePrice / sumStandalonePrice) * combo.discountedPrice);
+  };
+
+  // Keep for any backward-compat uses (weight calc, etc.)
   const comboDiscountRatio = combo && combo.originalPrice > 0
     ? combo.discountedPrice / combo.originalPrice
     : 1;
@@ -442,6 +453,12 @@ export default function ComboDetail() {
   const handleAddToCart = () => {
     if (!combo) return;
     if (!customer) { openLoginModal(); return; }
+    const comboImagesForCart = includedProducts
+      .slice(0, 3)
+      .map(({ product }) => product?.imageUrl || getFallbackImage(product?.category ?? "Fish"));
+    const comboCategoriesForCart = includedProducts
+      .slice(0, 3)
+      .map(({ product }) => product?.category ?? "Fish");
     for (let i = 0; i < qty; i++) {
       addToCart({
         id: -Math.abs(parseInt(combo.id.slice(-6), 16) || 9999),
@@ -457,6 +474,9 @@ export default function ComboDetail() {
         limitedStockNote: null,
         sectionId: null,
         isCombo: true,
+        comboImages: comboImagesForCart,
+        comboCategories: comboCategoriesForCart,
+        availableQty: null,
       } as any);
     }
     setAdded(true);
@@ -594,7 +614,7 @@ export default function ComboDetail() {
                     key={i}
                     item={item}
                     product={product}
-                    comboDiscountRatio={comboDiscountRatio}
+                    comboItemPrice={getComboItemPrice(product)}
                   />
                 ))}
               </div>

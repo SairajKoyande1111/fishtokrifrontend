@@ -9,6 +9,8 @@ export interface CartItem extends Omit<Product, 'id'> {
   instruction?: string;
   isCombo?: boolean;
   originalId?: string;
+  comboImages?: string[];
+  comboCategories?: string[];
 }
 
 interface CartContextType {
@@ -42,15 +44,33 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const availableQty = (product as any).availableQty ?? null;
+
+    let blocked = false;
     setItems((current) => {
       const existing = current.find((i) => i.id === product.id);
+      const newQty = existing ? existing.quantity + quantity : quantity;
+      if (availableQty !== null && newQty > availableQty) {
+        blocked = true;
+        return current;
+      }
       if (existing) {
         return current.map((i) =>
-          i.id === product.id ? { ...i, quantity: i.quantity + quantity } : i
+          i.id === product.id ? { ...i, quantity: newQty } : i
         );
       }
       return [...current, { ...product, quantity }];
     });
+
+    if (blocked) {
+      toast({
+        title: "Stock limit reached",
+        description: `Only ${availableQty} unit${availableQty === 1 ? "" : "s"} available for ${product.name}.`,
+        variant: "destructive",
+        duration: 2500,
+      });
+      return;
+    }
     toast({
       title: "Added to order",
       description: `${quantity}x ${product.name} added.`,
@@ -68,9 +88,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeFromCart(productId);
       return;
     }
-    setItems((current) =>
-      current.map((i) => (i.id === productId ? { ...i, quantity } : i))
-    );
+    setItems((current) => {
+      const item = current.find((i) => i.id === productId);
+      const availableQty = item?.availableQty ?? null;
+      if (availableQty !== null && quantity > availableQty) {
+        toast({
+          title: "Stock limit reached",
+          description: `Only ${availableQty} unit${availableQty === 1 ? "" : "s"} available.`,
+          variant: "destructive",
+          duration: 2500,
+        });
+        return current;
+      }
+      return current.map((i) => (i.id === productId ? { ...i, quantity } : i));
+    });
   };
 
   const updateInstruction = (productId: number, instruction: string) => {

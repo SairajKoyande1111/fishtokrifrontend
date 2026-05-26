@@ -314,21 +314,6 @@ export default function AddAddress() {
           )}
         </div>
 
-        <div className="space-y-3">
-          <h2 className="text-base font-bold text-foreground">Delivery Instructions</h2>
-          <Textarea
-            value={form.instructions}
-            onChange={e => { setForm(f => ({ ...f, instructions: e.target.value })); setInstructionLen(e.target.value.length); }}
-            placeholder="e.g. Take the first left near the red gate, ring the bell twice"
-            className="rounded-xl border-border/60 resize-none min-h-[80px] text-base"
-            maxLength={100}
-          />
-          <div className="flex justify-between items-center">
-            <p className="text-xs text-muted-foreground">Example: Take the first left next to red gate</p>
-            <p className="text-xs text-muted-foreground">{instructionLen}/100</p>
-          </div>
-        </div>
-
         <Button onClick={save} className="w-full h-14 rounded-2xl font-bold text-base bg-primary text-white shadow-lg shadow-primary/20 mt-4">
           Save Address
         </Button>

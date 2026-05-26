@@ -140,11 +140,20 @@ export async function registerRoutes(
   // ── Inline mappers ──────────────────────────────────────────────────────
   const toProduct = (doc: any) => {
     const allBatches = doc.inventoryBatches ?? [];
-    const activeBatches = allBatches.filter((b: any) => b.remainingTime !== "expired");
+    const now = new Date();
+    const activeBatches = allBatches.filter((b: any) => {
+      if (b.remainingTime === "expired") return false;
+      if (b.expiryDate && new Date(b.expiryDate) <= now) return false;
+      return true;
+    });
     // If product has batches and ALL are expired, mark as unavailable
     const effectiveStatus = allBatches.length > 0 && activeBatches.length === 0
       ? "unavailable"
       : doc.status;
+    // Total available quantity from non-expired batches
+    const availableQty = allBatches.length > 0
+      ? activeBatches.reduce((sum: number, b: any) => sum + (b.quantity ?? 0), 0)
+      : null;
     return {
       id: doc._id.toString(), name: doc.name, category: doc.category,
       subCategory: doc.subCategory ?? null, status: effectiveStatus,
@@ -156,6 +165,7 @@ export async function registerRoutes(
       grossWeight: doc.grossWeight ?? null, netWeight: doc.netWeight ?? null,
       pieces: doc.pieces ?? null, serves: doc.serves ?? null,
       discountPct: doc.discountPct ?? null, quantity: doc.quantity ?? null,
+      availableQty,
       couponIds: (doc.couponIds ?? []).map((id: any) => id.toString()),
       recipes: (doc.recipes ?? []).map((r: any) => ({
         title: r.title ?? "", description: r.description ?? "",

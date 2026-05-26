@@ -217,21 +217,36 @@ export function CartDrawer() {
     enabled: isCartOpen,
   });
 
-  const isSlotAvailable = useCallback((slot: Timeslot): boolean => {
-    if (slot.isInstant) return true;
-    if (!slot.endTime) return true;
-    const now = new Date();
-    const parts = slot.endTime.trim().split(" ");
+  const parseTimeStr = useCallback((timeStr: string): Date | null => {
+    if (!timeStr) return null;
+    const parts = timeStr.trim().split(" ");
     const [hStr, mStr] = parts[0].split(":");
     const period = parts[1]?.toUpperCase();
     let h = parseInt(hStr, 10);
     const m = parseInt(mStr, 10);
+    if (isNaN(h) || isNaN(m)) return null;
     if (period === "PM" && h !== 12) h += 12;
     if (period === "AM" && h === 12) h = 0;
-    const slotEnd = new Date();
-    slotEnd.setHours(h, m, 0, 0);
-    return now < slotEnd;
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    return d;
   }, []);
+
+  const isSlotAvailable = useCallback((slot: Timeslot): boolean => {
+    if (slot.isInstant) return true;
+    const now = new Date();
+    // If slot has a startTime, hide it once current time has reached or passed it
+    if (slot.startTime) {
+      const slotStart = parseTimeStr(slot.startTime);
+      if (slotStart && now >= slotStart) return false;
+    }
+    // Fallback: if no startTime, use endTime
+    if (!slot.startTime && slot.endTime) {
+      const slotEnd = parseTimeStr(slot.endTime);
+      if (slotEnd && now >= slotEnd) return false;
+    }
+    return true;
+  }, [parseTimeStr]);
 
   const availableTimeslots = timeslots.filter(isSlotAvailable);
   const selectedTimeslot = availableTimeslots.find(t => t.id === selectedTimeslotId) ?? null;
@@ -545,8 +560,33 @@ export function CartDrawer() {
                       {items.map(item => (
                         <div key={item.id} className="overflow-hidden" data-testid={`cart-item-${item.id}`}>
                           <div className="flex items-center gap-3 p-3">
-                            <div className="w-20 h-20 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                              <img src={item.imageUrl || getFallbackImage(item.category)} alt={item.name} className="w-full h-full object-contain" />
+                            <div className="w-20 h-20 overflow-hidden flex-shrink-0 rounded-xl border border-border/20">
+                              {item.isCombo && item.comboImages && item.comboImages.length > 0 ? (
+                                (() => {
+                                  const imgs = item.comboImages!;
+                                  const n = Math.min(imgs.length, 3);
+                                  const slotPct = 100 / n;
+                                  const widthPct = n === 1 ? 100 : slotPct + slotPct * 0.5;
+                                  return (
+                                    <div className="relative w-full h-full overflow-hidden">
+                                      {imgs.slice(0, n).map((img, i) => (
+                                        <div
+                                          key={i}
+                                          className="absolute top-0 bottom-0"
+                                          style={{ left: `${i * slotPct}%`, width: `${widthPct}%`, zIndex: i }}
+                                        >
+                                          <img src={img} alt="" className="w-full h-full object-cover" />
+                                          {i < n - 1 && (
+                                            <div className="absolute top-0 right-0 bottom-0 w-4 bg-gradient-to-r from-transparent to-black/20" />
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  );
+                                })()
+                              ) : (
+                                <img src={item.imageUrl || getFallbackImage(item.category)} alt={item.name} className="w-full h-full object-cover" />
+                              )}
                             </div>
                             <div className="flex-1 min-w-0">
                               <h4 className="font-semibold text-foreground text-sm truncate">{item.name}</h4>
@@ -734,11 +774,6 @@ export function CartDrawer() {
                                         <p className="text-xs text-muted-foreground mt-1 whitespace-normal break-words leading-snug">{coupon.description}</p>
                                         {exhausted && (
                                           <p className="text-[10px] text-red-500 mt-0.5 font-medium">Limit reached</p>
-                                        )}
-                                        {!exhausted && remaining !== null && remaining > 0 && usageInfo && usageInfo.usedCount > 0 && (
-                                          <p className="text-[10px] text-amber-600 mt-0.5 font-medium">
-                                            {remaining} use{remaining === 1 ? "" : "s"} remaining
-                                          </p>
                                         )}
                                         {belowMin && coupon.minOrderAmount > 0 && (
                                           <p className="text-[10px] text-amber-600 mt-0.5 font-medium">Add ₹{needed} more to unlock</p>
@@ -992,17 +1027,6 @@ export function CartDrawer() {
                                 data-testid="input-address-custom-label"
                               />
                             )}
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Delivery Instructions</Label>
-                            <input
-                              type="text"
-                              value={addForm.instructions}
-                              onChange={e => setAddForm(f => ({ ...f, instructions: e.target.value }))}
-                              placeholder="Leave at door, ring bell twice, etc."
-                              className="w-full bg-transparent border-0 border-b border-border/60 focus:border-[#364F9F] focus:outline-none px-0 py-1.5 text-sm transition-colors"
-                              data-testid="input-address-instructions"
-                            />
                           </div>
                           <div className="flex gap-2 pt-3">
                             <Button

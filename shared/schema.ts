@@ -64,6 +64,7 @@ export type Product = {
   serves: string | null;
   discountPct: number | null;
   quantity: number | null;
+  availableQty: number | null;
   couponIds: string[];
   recipes: Recipe[];
 };

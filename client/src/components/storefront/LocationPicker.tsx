@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, ChevronLeft, MapPin, Check, Loader2, AlertCircle, CheckCircle2, Search } from "lucide-react";
+import { X, ChevronLeft, MapPin, Check, Loader2, AlertCircle, CheckCircle2, Search, Navigation } from "lucide-react";
 import { useHub, SuperHub, SubHub } from "@/context/HubContext";
 import { FishTokriLogo } from "@/components/storefront/FishTokriLogo";
 import { useGoogleMaps } from "@/hooks/use-google-maps";
@@ -102,6 +102,7 @@ export function LocationPicker() {
   const [pickedSuper, setPickedSuper] = useState<SuperHub | null>(null);
   const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
   const [geoMessage, setGeoMessage] = useState("");
+  const [showPermissionPopup, setShowPermissionPopup] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<GooglePrediction[]>([]);
@@ -152,7 +153,17 @@ export function LocationPicker() {
       setSearchStatus("idle");
       setSearchMessage("");
       setShowDropdown(false);
+      setShowPermissionPopup(false);
       setTimeout(() => searchInputRef.current?.focus(), 250);
+
+      // Auto-detect location if permission is already granted
+      if (navigator.permissions) {
+        navigator.permissions.query({ name: "geolocation" }).then((result) => {
+          if (result.state === "granted") {
+            setTimeout(() => handleDetectLocation(), 400);
+          }
+        }).catch(() => {});
+      }
     }
   }, [isPickerOpen]);
 
@@ -358,7 +369,23 @@ export function LocationPicker() {
           {!mapsError && showDropdown && (
             <div className="absolute left-5 right-5 top-full mt-1 bg-white rounded-2xl border border-border/50 shadow-2xl z-20 overflow-hidden">
               <button
-                onClick={() => { setShowDropdown(false); setSearchQuery(""); handleDetectLocation(); }}
+                onClick={async () => {
+                  setShowDropdown(false);
+                  setSearchQuery("");
+                  if (geoStatus === "detecting" || geoStatus === "serviceable") return;
+                  try {
+                    if (navigator.permissions) {
+                      const perm = await navigator.permissions.query({ name: "geolocation" });
+                      if (perm.state === "granted") { handleDetectLocation(); return; }
+                      if (perm.state === "denied") {
+                        setGeoStatus("denied");
+                        setGeoMessage("Location access denied. Please allow it in your browser settings.");
+                        return;
+                      }
+                    }
+                    setShowPermissionPopup(true);
+                  } catch { handleDetectLocation(); }
+                }}
                 disabled={geoStatus === "detecting"}
                 className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-orange-50 transition-colors border-b border-border/30"
               >
@@ -419,7 +446,24 @@ export function LocationPicker() {
         {!mapsError && (
         <div className="px-5 pb-2 shrink-0">
           <button
-            onClick={handleDetectLocation}
+            onClick={async () => {
+              if (geoStatus === "detecting" || geoStatus === "serviceable") return;
+              if (!navigator.geolocation) { handleDetectLocation(); return; }
+              try {
+                if (navigator.permissions) {
+                  const perm = await navigator.permissions.query({ name: "geolocation" });
+                  if (perm.state === "granted") { handleDetectLocation(); return; }
+                  if (perm.state === "denied") {
+                    setGeoStatus("denied");
+                    setGeoMessage("Location access denied. Please allow it in your browser settings.");
+                    return;
+                  }
+                }
+                setShowPermissionPopup(true);
+              } catch {
+                handleDetectLocation();
+              }
+            }}
             disabled={geoStatus === "detecting" || geoStatus === "serviceable"}
             data-testid="button-detect-location"
             className="w-full flex items-center gap-4 px-4 py-3 hover:bg-slate-50 rounded-2xl transition-all disabled:opacity-60 disabled:cursor-not-allowed"
@@ -437,6 +481,37 @@ export function LocationPicker() {
             </div>
           </button>
         </div>
+        )}
+
+        {/* Location Permission Popup */}
+        {showPermissionPopup && (
+          <div className="fixed inset-0 z-[400] flex items-center justify-center px-4">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowPermissionPopup(false)} />
+            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
+              <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: `${BRAND_BLUE}15` }}>
+                <Navigation className="w-9 h-9" style={{ color: BRAND_BLUE }} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-800 mb-2">Allow Location Access</h3>
+              <p className="text-sm text-slate-500 font-normal leading-relaxed mb-6">
+                We'll use your location to check if we deliver to your area and set the right hub automatically.
+              </p>
+              <div className="flex gap-3 w-full">
+                <button
+                  onClick={() => setShowPermissionPopup(false)}
+                  className="flex-1 h-12 rounded-2xl border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors"
+                >
+                  Not Now
+                </button>
+                <button
+                  onClick={() => { setShowPermissionPopup(false); handleDetectLocation(); }}
+                  className="flex-1 h-12 rounded-2xl text-white font-semibold text-sm transition-colors"
+                  style={{ backgroundColor: BRAND_BLUE }}
+                >
+                  Allow Location
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Geo Status Banner */}
