@@ -236,21 +236,32 @@ export function CartDrawer() {
     return d;
   }, []);
 
+  // Extract start time string from a slot — supports both dedicated startTime field
+  // and labels like "09:30 PM – 10:00 PM" (new DB structure) or "09:00 - 10:59" (old)
+  const extractSlotStartTime = useCallback((slot: Timeslot): string | null => {
+    if (slot.startTime) return slot.startTime;
+    if (slot.label) {
+      // Label formats: "09:30 PM – 10:00 PM" or "09:00 - 10:59"
+      const match = slot.label.match(/^(\d{1,2}:\d{2}(?:\s*[AP]M)?)/i);
+      if (match) return match[1].trim();
+    }
+    return null;
+  }, []);
+
   const isSlotAvailable = useCallback((slot: Timeslot): boolean => {
     if (slot.isInstant) return true;
     const now = new Date();
-    // If slot has a startTime, hide it once current time has reached or passed it
-    if (slot.startTime) {
-      const slotStart = parseTimeStr(slot.startTime);
+    const startStr = extractSlotStartTime(slot);
+    if (startStr) {
+      const slotStart = parseTimeStr(startStr);
       if (slotStart && now >= slotStart) return false;
-    }
-    // Fallback: if no startTime, use endTime
-    if (!slot.startTime && slot.endTime) {
+    } else if (slot.endTime) {
+      // No start time at all — fall back to endTime
       const slotEnd = parseTimeStr(slot.endTime);
       if (slotEnd && now >= slotEnd) return false;
     }
     return true;
-  }, [parseTimeStr]);
+  }, [parseTimeStr, extractSlotStartTime]);
 
   const availableTimeslots = timeslots.filter(isSlotAvailable);
   const selectedTimeslot = availableTimeslots.find(t => t.id === selectedTimeslotId) ?? null;
@@ -463,7 +474,7 @@ export function CartDrawer() {
     const orderItems = items.map(i => ({ productId: i.originalId ?? String(i.id), quantity: i.quantity, name: i.name, price: i.price, imageUrl: i.imageUrl ?? null }));
     const slotLabel = selectedTimeslot.isInstant
       ? "Instant Delivery (Porter)"
-      : `${selectedTimeslot.label} (${selectedTimeslot.startTime} – ${selectedTimeslot.endTime})`;
+      : selectedTimeslot.label;
     createOrder(
       {
         customerName: selected.name || customer?.name || "",
@@ -1155,9 +1166,6 @@ export function CartDrawer() {
                                     </div>
                                     <span className={`text-sm font-semibold flex-1 min-w-0 truncate ${slot.isInstant ? "text-amber-700" : "text-foreground"}`}>
                                       {slot.label}
-                                      {slot.startTime && slot.endTime && (
-                                        <span className="font-normal text-muted-foreground"> · {slot.startTime}–{slot.endTime}</span>
-                                      )}
                                     </span>
                                     {slot.isInstant && (slot.extraCharge ?? 0) > 0 ? (
                                       <span className="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full shrink-0">+₹{slot.extraCharge}</span>
