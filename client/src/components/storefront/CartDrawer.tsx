@@ -276,14 +276,12 @@ export function CartDrawer() {
   const isSlotAvailable = useCallback((slot: Timeslot): boolean => {
     if (slot.isInstant) return true;
     const now = new Date();
-    const startStr = extractSlotStartTime(slot);
-    if (startStr) {
-      const slotStart = parseTimeStr(startStr);
-      if (slotStart && now >= slotStart) return false;
-    } else if (slot.endTime) {
-      // No start time at all — fall back to endTime
-      const slotEnd = parseTimeStr(slot.endTime);
-      if (slotEnd && now >= slotEnd) return false;
+    // A slot is available until its END time passes.
+    // If endTime is missing fall back to startTime as the cutoff.
+    const cutoffStr = slot.endTime ?? extractSlotStartTime(slot);
+    if (cutoffStr) {
+      const cutoff = parseTimeStr(cutoffStr);
+      if (cutoff && now >= cutoff) return false;
     }
     return true;
   }, [parseTimeStr, extractSlotStartTime]);
