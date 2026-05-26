@@ -111,7 +111,7 @@ function formatOrderId(mongoId: string): string {
 }
 
 function getDisplayOrderId(order: { id: string; orderId?: string | null }): string {
-  if (order.orderId) return order.orderId;
+  if (order.orderId) return order.orderId.replace(/^#+/, "");
   return formatOrderId(String(order.id));
 }
 

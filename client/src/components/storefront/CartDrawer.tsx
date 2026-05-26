@@ -500,6 +500,7 @@ export function CartDrawer() {
       name: i.name,
       price: i.price,
       unit: (i as any).unit ?? null,
+      imageUrl: i.imageUrl ?? null,
     }));
     const slotLabel = selectedTimeslot.isInstant ? "Instant Delivery (Porter)" : selectedTimeslot.label;
     const slotCharge = selectedTimeslot.isInstant ? (selectedTimeslot.extraCharge ?? 0) : 0;
