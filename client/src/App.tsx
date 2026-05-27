@@ -7,7 +7,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/context/CartContext";
 import { CustomerProvider } from "@/context/CustomerContext";
 import { HubProvider } from "@/context/HubContext";
-import { AutoLocationDetect } from "@/components/storefront/AutoLocationDetect";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/storefront/Home";
 import ProductDetail from "@/pages/storefront/ProductDetail";
@@ -74,7 +73,6 @@ function App() {
             <TooltipProvider>
               <Toaster />
               <ScrollToTop />
-              <AutoLocationDetect />
               <Router />
             </TooltipProvider>
           </CartProvider>
