@@ -1,0 +1,215 @@
+[{
+  "_id": {
+    "$oid": "6a153473b308bc16c243ebe4"
+  },
+  "name": "Aniket Sanjay Rane",
+  "email": "itsmeezio111@gmail.com",
+  "phone": "9923525404",
+  "dateOfBirth": "2004-02-26",
+  "walletBalance": 50,
+  "addresses": [
+    {
+      "label": "Home",
+      "type": "house",
+      "name": "Aniket Sanjay Rane",
+      "phone": "9923525404",
+      "building": "test",
+      "street": "test",
+      "area": "test",
+      "pincode": "400605",
+      "instructions": "test"
+    }
+  ],
+  "orders": [],
+  "usedCoupons": [
+    {
+      "couponId": "6a16a957ef167b16943dbdb9",
+      "couponCode": "FIRSTTIMEONLY",
+      "couponTitle": "Test",
+      "orderId": "6a16aef3ef167b16943dbfc9",
+      "subHubId": "6a153ecf3f1687ab88db6331",
+      "usedAt": {
+        "$date": "2026-05-27T09:26:39.681Z"
+      }
+    }
+  ],
+  "createdAt": {
+    "$date": "2026-05-26T05:49:39.320Z"
+  },
+  "updatedAt": {
+    "$date": "2026-05-27T05:30:26.069Z"
+  },
+  "__v": 2,
+  "activeCoupons": []
+},
+{
+  "_id": {
+    "$oid": "6a16a5c99bbeed61c0e94498"
+  },
+  "phone": "9619523254",
+  "__v": 0,
+  "addresses": [
+    {
+      "name": "Sairaj Koyande",
+      "phone": "9619523254",
+      "building": "205 A KAIRALI PARK",
+      "street": "KATEMANIVALI NAKA",
+      "area": "KALYAN",
+      "pincode": "400601",
+      "type": "house",
+      "label": "Home",
+      "instructions": "",
+      "_id": {
+        "$oid": "6a16a5f4027768e09f8353d9"
+      }
+    }
+  ],
+  "createdAt": {
+    "$date": "2026-05-27T08:05:29.596Z"
+  },
+  "dateOfBirth": null,
+  "email": "sk@gmail.com",
+  "name": "Sairaj Koyande",
+  "orders": [
+    {
+      "orderId": "#FTW202605271",
+      "customerName": "Sairaj Koyande",
+      "phone": "9619523254",
+      "deliveryArea": "KALYAN",
+      "address": "205 A KAIRALI PARK · KATEMANIVALI NAKA, KALYAN · 400601",
+      "items": [
+        {
+          "productId": "6a15e3fe6ed6492bca76f469",
+          "name": "Chicken",
+          "price": 200,
+          "quantity": 5,
+          "unit": "per kg",
+          "imageUrl": "https://res.cloudinary.com/dbkmmxnzd/image/upload/v1779821736/fishtokri/products/zjoqiz70erjwaqfxapkg.jpg"
+        }
+      ],
+      "status": "pending",
+      "notes": "",
+      "total": 1150,
+      "placedAt": {
+        "$date": "2026-05-27T09:03:21.819Z"
+      },
+      "updatedAt": {
+        "$date": "2026-05-27T09:03:21.849Z"
+      }
+    },
+    {
+      "orderId": "#FTW202605271",
+      "customerName": "Sairaj Koyande",
+      "phone": "9619523254",
+      "deliveryArea": "KALYAN",
+      "address": "205 A KAIRALI PARK · KATEMANIVALI NAKA, KALYAN · 400601",
+      "items": [
+        {
+          "productId": "6a15e3fe6ed6492bca76f469",
+          "name": "Chicken",
+          "price": 200,
+          "quantity": 1,
+          "unit": "per kg",
+          "imageUrl": "https://res.cloudinary.com/dbkmmxnzd/image/upload/v1779821736/fishtokri/products/zjoqiz70erjwaqfxapkg.jpg"
+        },
+        {
+          "productId": "6a15e43b6ed6492bca76f4b2",
+          "name": "Fish",
+          "price": 200,
+          "quantity": 1,
+          "unit": "per kg",
+          "imageUrl": "https://res.cloudinary.com/dbkmmxnzd/image/upload/v1779821769/fishtokri/products/ojsakfjtjpdbfcrvyjrf.jpg"
+        }
+      ],
+      "status": "pending",
+      "notes": "",
+      "total": 550,
+      "placedAt": {
+        "$date": "2026-05-27T09:03:59.794Z"
+      },
+      "updatedAt": {
+        "$date": "2026-05-27T09:03:59.819Z"
+      }
+    },
+    {
+      "orderId": "#FTW202605272",
+      "customerName": "Sairaj Koyande",
+      "phone": "9619523254",
+      "deliveryArea": "KALYAN",
+      "address": "205 A KAIRALI PARK · KATEMANIVALI NAKA, KALYAN · 400601",
+      "items": [
+        {
+          "productId": "6a15e3fe6ed6492bca76f469",
+          "name": "Chicken",
+          "price": 200,
+          "quantity": 1,
+          "unit": "per kg",
+          "imageUrl": "https://res.cloudinary.com/dbkmmxnzd/image/upload/v1779821736/fishtokri/products/zjoqiz70erjwaqfxapkg.jpg"
+        },
+        {
+          "productId": "6a15e43b6ed6492bca76f4b2",
+          "name": "Fish",
+          "price": 200,
+          "quantity": 1,
+          "unit": "per kg",
+          "imageUrl": "https://res.cloudinary.com/dbkmmxnzd/image/upload/v1779821769/fishtokri/products/ojsakfjtjpdbfcrvyjrf.jpg"
+        }
+      ],
+      "status": "pending",
+      "notes": "",
+      "total": 600,
+      "placedAt": {
+        "$date": "2026-05-27T09:04:11.251Z"
+      },
+      "updatedAt": {
+        "$date": "2026-05-27T09:04:11.269Z"
+      }
+    },
+    {
+      "orderId": "#FTW202605273",
+      "customerName": "Sairaj Koyande",
+      "phone": "9619523254",
+      "deliveryArea": "KALYAN",
+      "address": "205 A KAIRALI PARK · KATEMANIVALI NAKA, KALYAN · 400601",
+      "items": [
+        {
+          "productId": "6a15e43b6ed6492bca76f4b2",
+          "name": "Fish",
+          "price": 200,
+          "quantity": 2,
+          "unit": "per kg",
+          "imageUrl": "https://res.cloudinary.com/dbkmmxnzd/image/upload/v1779821769/fishtokri/products/ojsakfjtjpdbfcrvyjrf.jpg"
+        }
+      ],
+      "status": "pending",
+      "notes": "",
+      "total": 600,
+      "placedAt": {
+        "$date": "2026-05-27T09:04:49.514Z"
+      },
+      "updatedAt": {
+        "$date": "2026-05-27T09:04:49.532Z"
+      }
+    }
+  ],
+  "updatedAt": {
+    "$date": "2026-05-27T09:29:47.130Z"
+  },
+  "usedCoupons": [],
+  "activeCoupons": [
+    {
+      "couponId": "6a16a957ef167b16943dbdb9",
+      "couponCode": "FIRSTTIMEONLY",
+      "couponTitle": "Test",
+      "subHubId": "6a153ecf3f1687ab88db6331",
+      "usedCount": 1,
+      "orderIds": [
+        "6a16b37f6e2521f826eb3dc8"
+      ],
+      "appliedAt": {
+        "$date": "2026-05-27T09:03:59.837Z"
+      }
+    }
+  ],
+  "walletBalance": 100
+}]

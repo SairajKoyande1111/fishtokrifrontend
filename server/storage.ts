@@ -53,6 +53,7 @@ function toCustomer(doc: any): Customer {
       placedAt: o.placedAt,
       updatedAt: o.updatedAt,
     })),
+    walletBalance: doc.walletBalance ?? 0,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };

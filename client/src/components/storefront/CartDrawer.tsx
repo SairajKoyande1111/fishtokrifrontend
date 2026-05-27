@@ -967,6 +967,37 @@ export function CartDrawer() {
                       </div>
                     )}
 
+                    {/* Fishtokri Wallet — shown right below Offers */}
+                    {customer && walletBalance > 0 && (
+                      <div className="mx-4 mt-4">
+                        <button
+                          type="button"
+                          onClick={() => setUseWallet(w => !w)}
+                          className={`w-full flex items-center gap-3 p-3.5 rounded-2xl border-2 transition-all text-left ${useWallet ? "border-[#364F9F] bg-[#364F9F]/5" : "border-border/40 bg-white hover:border-[#364F9F]/30"}`}
+                          data-testid="button-toggle-wallet"
+                        >
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${useWallet ? "border-[#364F9F]" : "border-slate-300"}`}>
+                            {useWallet && <div className="w-2 h-2 rounded-full bg-[#364F9F]" />}
+                          </div>
+                          <img
+                            src={iconWalletImg}
+                            alt=""
+                            className="w-5 h-5 object-contain shrink-0"
+                            style={{ filter: "brightness(0) saturate(100%) invert(28%) sepia(48%) saturate(1517%) hue-rotate(212deg) brightness(91%) contrast(89%)" }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-foreground">Use Fishtokri Wallet</p>
+                            <p className="text-xs text-muted-foreground">
+                              Balance: <span className="font-bold" style={{ color: "#364F9F" }}>₹{walletBalance.toLocaleString("en-IN")}</span>
+                              {useWallet && walletDeduction > 0 && (
+                                <span className="ml-1 font-semibold" style={{ color: "#364F9F" }}> · −₹{walletDeduction} applied</span>
+                              )}
+                            </p>
+                          </div>
+                        </button>
+                      </div>
+                    )}
+
                     {/* Bill Details */}
                     <div className="mx-4 mt-4 border border-dashed border-border/60 rounded-2xl p-4 space-y-2.5">
                       <h3 className="font-semibold text-foreground text-sm mb-3">Bill Details</h3>
@@ -1322,37 +1353,6 @@ export function CartDrawer() {
                           )}
                         </div>
                     </div>
-
-                    {/* Fishtokri Wallet */}
-                    {customer && walletBalance > 0 && (
-                      <div className="mx-4 mt-4">
-                        <button
-                          type="button"
-                          onClick={() => setUseWallet(w => !w)}
-                          className={`w-full flex items-center gap-3 p-3.5 rounded-2xl border-2 transition-all text-left ${useWallet ? "border-[#364F9F] bg-[#364F9F]/5" : "border-border/40 bg-white hover:border-[#364F9F]/30"}`}
-                          data-testid="button-toggle-wallet"
-                        >
-                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${useWallet ? "border-[#364F9F]" : "border-slate-300"}`}>
-                            {useWallet && <div className="w-2 h-2 rounded-full bg-[#364F9F]" />}
-                          </div>
-                          <img
-                            src={iconWalletImg}
-                            alt=""
-                            className="w-5 h-5 object-contain shrink-0"
-                            style={{ filter: "brightness(0) saturate(100%) invert(28%) sepia(48%) saturate(1517%) hue-rotate(212deg) brightness(91%) contrast(89%)" }}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-foreground">Use Fishtokri Wallet</p>
-                            <p className="text-xs text-muted-foreground">
-                              Balance: <span className="font-bold" style={{ color: "#364F9F" }}>₹{walletBalance.toLocaleString("en-IN")}</span>
-                              {useWallet && walletDeduction > 0 && (
-                                <span className="ml-1 text-blue-600 font-semibold"> · −₹{walletDeduction} applied</span>
-                              )}
-                            </p>
-                          </div>
-                        </button>
-                      </div>
-                    )}
 
                     {/* Payment Method */}
                     <div className="px-4 mt-5 mb-4 space-y-3">
