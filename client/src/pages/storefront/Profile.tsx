@@ -130,6 +130,7 @@ type OrdersSubTab = "current" | "previous";
 const ORDERS_PER_PAGE = 5;
 
 function getOrderTotal(order: OrderRequest) {
+  if ((order as any).total != null) return (order as any).total;
   const items: OrderItem[] = Array.isArray(order.items) ? order.items as OrderItem[] : [];
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const deliveryFee = (order as any).slotCharge ?? 0;
@@ -386,7 +387,7 @@ function OrderCard({ order, productImageMap }: { order: OrderRequest; productIma
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const deliveryFee = (order as any).slotCharge ?? 0;
   const discount = (order as any).coupon?.discountAmount ?? 0;
-  const total = subtotal + deliveryFee - discount;
+  const total = (order as any).total ?? (subtotal + deliveryFee - discount);
   const status = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
   const date = order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-IN", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
