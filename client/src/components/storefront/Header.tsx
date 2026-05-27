@@ -246,13 +246,11 @@ export function Header({
           {/* Location */}
           <button
             onClick={openPicker}
-            className="flex items-center gap-1.5 pl-2 border-l border-slate-400 ml-0.5 hover:opacity-70 transition-opacity"
+            className="flex items-center pl-2 border-l border-slate-400 ml-0.5 hover:opacity-70 transition-opacity"
             data-testid="button-location-picker"
+            aria-label="Check delivery area"
           >
             <img src={locationImg} alt="Location" className="w-5 h-5 sm:w-5 sm:h-5 object-contain flex-shrink-0" />
-            <span className={`text-sm sm:text-sm font-semibold max-w-[90px] truncate ${selectedSubHub ? "text-primary" : "text-foreground"}`}>
-              {locationLabel}
-            </span>
           </button>
         </div>
       </div>

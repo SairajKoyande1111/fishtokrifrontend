@@ -1,138 +1,22 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, ChevronLeft, MapPin, Check, Loader2, AlertCircle, CheckCircle2, Search, Navigation } from "lucide-react";
+import { X, MapPin, CheckCircle2, AlertCircle, Loader2, MessageCircle } from "lucide-react";
 import { useHub, SuperHub, SubHub } from "@/context/HubContext";
-import { FishTokriLogo } from "@/components/storefront/FishTokriLogo";
-import { useGoogleMaps, waitForMapsReady } from "@/hooks/use-google-maps";
-import googleMapsIcon from "@assets/logo_(15)_1778186984164.png";
 import locationImg from "@assets/placeholder_(1)_1774706943633.png";
-
-type GeoStatus = "idle" | "detecting" | "serviceable" | "unserviceable" | "denied" | "error";
 
 const BRAND_BLUE = "#364F9F";
 const BRAND_ORANGE = "#F97316";
+const WHATSAPP_NUMBER = "919220200100";
 
-/* ── Typewriter placeholder ─────────────────────────────────────────── */
-const TYPEWRITER_PHRASES = [
-  "Search area, locality, landmark...",
-  "Try 'Thane', 'Bandra', 'Andheri'...",
-  "Enter a pincode...",
-  "Search by landmark...",
-];
-
-function useTypewriter(phrases: string[], speed = 60, pause = 1800) {
-  const [displayed, setDisplayed] = useState("");
-  const [phraseIdx, setPhraseIdx] = useState(0);
-  const [charIdx, setCharIdx] = useState(0);
-  const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => {
-    const current = phrases[phraseIdx];
-    let timeout: ReturnType<typeof setTimeout>;
-
-    if (!deleting && charIdx < current.length) {
-      timeout = setTimeout(() => setCharIdx(c => c + 1), speed);
-    } else if (!deleting && charIdx === current.length) {
-      timeout = setTimeout(() => setDeleting(true), pause);
-    } else if (deleting && charIdx > 0) {
-      timeout = setTimeout(() => setCharIdx(c => c - 1), speed / 2);
-    } else if (deleting && charIdx === 0) {
-      setDeleting(false);
-      setPhraseIdx(p => (p + 1) % phrases.length);
-    }
-
-    setDisplayed(current.slice(0, charIdx));
-    return () => clearTimeout(timeout);
-  }, [charIdx, deleting, phraseIdx, phrases, speed, pause]);
-
-  return displayed;
-}
-
-/* ── Google Maps ─────────────────────────────────────────────────────── */
-declare global { interface Window { google: any } }
-
-interface GooglePrediction {
-  place_id: string;
-  description: string;
-  structured_formatting: { main_text: string; secondary_text: string };
-}
-
-async function googlePlacesSearch(query: string): Promise<GooglePrediction[]> {
-  if (!window.google?.maps?.places) return [];
-  return new Promise((resolve) => {
-    const svc = new window.google.maps.places.AutocompleteService();
-    svc.getPlacePredictions(
-      { input: query, componentRestrictions: { country: "in" }, types: ["geocode"] },
-      (preds: GooglePrediction[] | null, status: string) => {
-        if (status !== "OK" || !preds) { resolve([]); return; }
-        resolve(preds);
-      }
-    );
-  });
-}
-
-async function getPincodeFromPlaceId(placeId: string): Promise<string | null> {
-  const ready = await waitForMapsReady(8000);
-  if (!ready || !window.google?.maps) return null;
-  return new Promise((resolve) => {
-    const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ placeId }, (results: any, status: string) => {
-      if (status !== "OK" || !results?.[0]) { resolve(null); return; }
-      const comp = results[0].address_components.find((c: any) => c.types.includes("postal_code"));
-      resolve(comp?.long_name ?? null);
-    });
-  });
-}
-
-async function reverseGeocode(lat: number, lon: number): Promise<string | null> {
-  const ready = await waitForMapsReady(8000);
-  if (!ready || !window.google?.maps) return null;
-  return new Promise((resolve) => {
-    const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ location: { lat, lng: lon } }, (results: any, status: string) => {
-      if (status !== "OK" || !results?.[0]) { resolve(null); return; }
-      const comp = results[0].address_components.find((c: any) => c.types.includes("postal_code"));
-      resolve(comp?.long_name ?? null);
-    });
-  });
-}
+type CheckStatus = "idle" | "checking" | "eligible" | "ineligible";
 
 export function LocationPicker() {
-  const { ready: mapsReady, error: mapsError } = useGoogleMaps();
-  const { isPickerOpen, closePicker, setHub, selectedSuperHub, selectedSubHub } = useHub();
-  const [step, setStep] = useState<"super" | "sub">("super");
-  const [pickedSuper, setPickedSuper] = useState<SuperHub | null>(null);
-  const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
-  const [geoMessage, setGeoMessage] = useState("");
-  const [showPermissionPopup, setShowPermissionPopup] = useState(false);
+  const { isPickerOpen, closePicker, setHub } = useHub();
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<GooglePrediction[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchStatus, setSearchStatus] = useState<"idle" | "serviceable" | "unserviceable">("idle");
-  const [searchMessage, setSearchMessage] = useState("");
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [searchFocused, setSearchFocused] = useState(false);
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const typewriterPlaceholder = useTypewriter(TYPEWRITER_PHRASES);
-
-  const { data: superHubs = [], isLoading: loadingSuper } = useQuery<SuperHub[]>({
-    queryKey: ["/api/hubs/super"],
-    enabled: isPickerOpen,
-  });
-
-  const { data: subHubs = [], isLoading: loadingSub } = useQuery<SubHub[]>({
-    queryKey: ["/api/hubs/sub", pickedSuper?.id],
-    queryFn: async () => {
-      const res = await fetch(`/api/hubs/sub?superHubId=${pickedSuper!.id}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
-    enabled: !!pickedSuper,
-  });
+  const [pincode, setPincode] = useState("");
+  const [status, setStatus] = useState<CheckStatus>("idle");
+  const [areaName, setAreaName] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: allSubHubs = [] } = useQuery<SubHub[]>({
     queryKey: ["/api/hubs/sub-all"],
@@ -144,494 +28,201 @@ export function LocationPicker() {
     enabled: isPickerOpen,
   });
 
-  const autoDetectedForCurrentOpen = useRef(false);
+  const { data: superHubs = [] } = useQuery<SuperHub[]>({
+    queryKey: ["/api/hubs/super"],
+    enabled: isPickerOpen,
+  });
 
   useEffect(() => {
     if (isPickerOpen) {
-      autoDetectedForCurrentOpen.current = false;
-      setStep("super");
-      setPickedSuper(selectedSuperHub);
-      setGeoStatus("idle");
-      setGeoMessage("");
-      setSearchQuery("");
-      setSearchResults([]);
-      setSearchStatus("idle");
-      setSearchMessage("");
-      setShowDropdown(false);
-      setShowPermissionPopup(false);
-      setTimeout(() => searchInputRef.current?.focus(), 250);
+      setPincode("");
+      setStatus("idle");
+      setAreaName("");
+      setTimeout(() => inputRef.current?.focus(), 250);
     }
   }, [isPickerOpen]);
 
-  /* Debounced Google Places search */
-  useEffect(() => {
-    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    const q = searchQuery.trim();
-    if (q.length < 2) {
-      setSearchResults([]);
-      setIsSearching(false);
-      setShowDropdown(q.length > 0);
-      return;
-    }
-    setIsSearching(true);
-    setShowDropdown(true);
-    searchTimeoutRef.current = setTimeout(async () => {
-      const results = await googlePlacesSearch(q);
-      setSearchResults(results);
-      setIsSearching(false);
-    }, 350);
-    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
-  }, [searchQuery, mapsReady]);
+  if (!isPickerOpen) return null;
 
-  const checkServiceability = useCallback((
-    pincode: string | undefined,
-    locationName: string,
-  ) => {
-    if (pincode) {
-      const clean = pincode.replace(/\s/g, "");
-      const matchedSub = allSubHubs.find((sub) =>
-        sub.pincodes.some((p) => p.pincode.replace(/\s/g, "") === clean)
-      );
+  const handleCheck = () => {
+    const clean = pincode.replace(/\s/g, "");
+    if (clean.length !== 6) return;
+
+    setStatus("checking");
+
+    const matchedSub = allSubHubs.find((sub) =>
+      sub.pincodes.some((p) => p.pincode.replace(/\s/g, "") === clean)
+    );
+
+    setTimeout(() => {
       if (matchedSub) {
         const matchedSuper = superHubs.find((s) => s.id === matchedSub.superHubId);
         if (matchedSuper) {
-          setSearchStatus("serviceable");
-          setSearchMessage(`We deliver to ${matchedSub.name}! (Pincode: ${clean})`);
-          setTimeout(() => setHub(matchedSuper, matchedSub), 800);
-          return true;
-        }
-      }
-    }
-
-    const pincodeInfo = pincode ? ` (${pincode.replace(/\s/g, "")})` : " — no pincode available";
-    setSearchStatus("unserviceable");
-    setSearchMessage(`Sorry, we don't deliver to ${locationName}${pincodeInfo} yet.`);
-    return false;
-  }, [allSubHubs, superHubs, setHub]);
-
-  const handleSearchResultSelect = useCallback(async (prediction: GooglePrediction) => {
-    const title = prediction.structured_formatting.main_text;
-    setSearchQuery("");
-    setShowDropdown(false);
-    setSearchResults([]);
-    setIsSearching(true);
-    const pincode = await getPincodeFromPlaceId(prediction.place_id);
-    setIsSearching(false);
-    checkServiceability(pincode ?? undefined, title);
-  }, [checkServiceability]);
-
-  const handleDetectLocation = useCallback(async () => {
-    if (!navigator.geolocation) {
-      setGeoStatus("error");
-      setGeoMessage("Your browser doesn't support location detection.");
-      return;
-    }
-    setGeoStatus("detecting");
-    setGeoMessage("Detecting your location...");
-    setShowDropdown(false);
-
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        setGeoMessage("Checking serviceability...");
-        const pincode = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
-        if (!pincode) {
-          setGeoStatus("error");
-          setGeoMessage("Couldn't determine your area. Please select manually.");
+          setAreaName(matchedSub.name);
+          setStatus("eligible");
+          setHub(matchedSuper, matchedSub);
+          setTimeout(() => closePicker(), 2000);
           return;
         }
-        const matchedSub = allSubHubs.find((sub) =>
-          sub.pincodes.some((p) => p.pincode.replace(/\s/g, "") === pincode)
-        );
-        if (!matchedSub) {
-          setGeoStatus("unserviceable");
-          setGeoMessage(`Sorry, we don't deliver to your area yet (${pincode}).`);
-          return;
-        }
-        const matchedSuper = superHubs.find((s) => s.id === matchedSub.superHubId);
-        if (!matchedSuper) { setGeoStatus("error"); setGeoMessage("Couldn't match your location."); return; }
-        setGeoStatus("serviceable");
-        setGeoMessage(`Great news! We deliver to ${matchedSub.name}.`);
-        setTimeout(() => setHub(matchedSuper, matchedSub), 1200);
-      },
-      (err) => {
-        setGeoStatus(err.code === err.PERMISSION_DENIED ? "denied" : "error");
-        setGeoMessage(err.code === err.PERMISSION_DENIED
-          ? "Location access denied. Please allow it in your browser settings."
-          : "Couldn't detect location. Please select manually.");
-      },
-      { timeout: 10000, maximumAge: 60000 }
-    );
-  }, [allSubHubs, superHubs, setHub]);
-
-  // Auto-detect when picker opens AND hub data is ready — must be after handleDetectLocation
-  useEffect(() => {
-    if (!isPickerOpen || allSubHubs.length === 0 || autoDetectedForCurrentOpen.current) return;
-    if (!navigator.permissions) return;
-    navigator.permissions.query({ name: "geolocation" }).then((result) => {
-      if (result.state === "granted" && !autoDetectedForCurrentOpen.current) {
-        autoDetectedForCurrentOpen.current = true;
-        handleDetectLocation();
       }
-    }).catch(() => {});
-  }, [isPickerOpen, allSubHubs.length, handleDetectLocation]);
-
-  if (!isPickerOpen) return null;
-
-  const handleSuperSelect = (hub: SuperHub) => { setPickedSuper(hub); setStep("sub"); };
-  const handleSubSelect = (sub: SubHub) => { if (pickedSuper) setHub(pickedSuper, sub); };
-
-  const geoConfigs = {
-    detecting: { icon: <Loader2 className="w-4 h-4 animate-spin" />, bg: "bg-blue-50 border-blue-200", text: "text-blue-700" },
-    serviceable: { icon: <CheckCircle2 className="w-4 h-4" />, bg: "bg-green-50 border-green-200", text: "text-green-700" },
-    unserviceable: { icon: <AlertCircle className="w-4 h-4" />, bg: "bg-orange-50 border-orange-200", text: "text-orange-700" },
-    denied: { icon: <AlertCircle className="w-4 h-4" />, bg: "bg-red-50 border-red-200", text: "text-red-700" },
-    error: { icon: <AlertCircle className="w-4 h-4" />, bg: "bg-red-50 border-red-200", text: "text-red-700" },
+      setStatus("ineligible");
+    }, 600);
   };
-  const geoCfg = geoStatus !== "idle" ? geoConfigs[geoStatus as keyof typeof geoConfigs] : null;
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleCheck();
+  };
 
   return (
     <div className="fixed inset-0 z-[300] flex items-stretch justify-end">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closePicker} />
 
-      {/* Main panel */}
-      <div className="relative bg-white w-full h-full sm:max-w-md rounded-none border-l border-border/30 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 max-h-screen font-[Poppins,sans-serif]">
+      <div className="relative bg-white w-full h-full sm:max-w-sm rounded-none border-l border-border/30 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 max-h-screen font-[Poppins,sans-serif]">
 
-        {/* White header — matches Order Summary style */}
+        {/* Header */}
         <div className="shrink-0 px-5 py-4 border-b border-border/30 bg-white sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {step === "sub" && (
-                <button
-                  onClick={() => setStep("super")}
-                  className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors mr-1"
-                  data-testid="button-location-back"
-                >
-                  <ChevronLeft className="w-5 h-5 text-slate-600" />
-                </button>
-              )}
               <img src={locationImg} alt="Location" className="w-5 h-5 object-contain" />
-              <span className="text-xl font-bold text-foreground">
-                {step === "sub" ? `Areas in ${pickedSuper?.name}` : "Select your location"}
-              </span>
+              <span className="text-xl font-bold text-foreground">Check Delivery</span>
             </div>
-            <div className="flex items-center gap-2">
-              {(selectedSubHub || selectedSuperHub) && (
-                <div className="shrink-0 rounded-full px-4 py-1.5" style={{ backgroundColor: BRAND_ORANGE }}>
-                  <span className="text-sm font-bold text-white">
-                    {selectedSubHub ? selectedSubHub.name : selectedSuperHub?.name}
-                  </span>
-                </div>
-              )}
-              <button
-                onClick={closePicker}
-                className="flex items-center justify-center w-9 h-9 rounded-full bg-[#364F9F] text-white transition-all duration-200 hover:bg-[#2a3d7a] shadow-md"
-                data-testid="button-location-close"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+            <button
+              onClick={closePicker}
+              className="flex items-center justify-center w-9 h-9 rounded-full text-white transition-all duration-200 hover:opacity-80 shadow-md"
+              style={{ backgroundColor: BRAND_BLUE }}
+              data-testid="button-location-close"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
-        {/* Search Box — pill format, darker style matching home screen */}
-        <div className="px-5 pt-4 pb-2 shrink-0 relative" ref={dropdownRef}>
-          {mapsError ? (
-            <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 text-sm">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>Location search unavailable. Please select your city manually below.</span>
+        {/* Body */}
+        <div className="flex-1 flex flex-col px-5 pt-8 pb-6">
+
+          <div className="flex flex-col items-center text-center mb-8">
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+              style={{ backgroundColor: `${BRAND_BLUE}15` }}
+            >
+              <MapPin className="w-8 h-8" style={{ color: BRAND_BLUE }} />
             </div>
-          ) : (
-          <div className="relative">
-            {isSearching ? (
-              <Loader2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 animate-spin pointer-events-none" />
-            ) : (
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
-            )}
+            <h2 className="text-xl font-bold text-slate-800 mb-1">Enter your Pincode</h2>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              We'll check if fresh fish, seafood &amp; meat can be delivered to your area.
+            </p>
+          </div>
+
+          {/* Pincode input */}
+          <div className="relative mb-4">
             <input
-              ref={searchInputRef}
-              type="text"
-              value={searchQuery}
-              onChange={e => { setSearchQuery(e.target.value); setSearchStatus("idle"); setSearchMessage(""); }}
-              onFocus={() => { setSearchFocused(true); searchQuery.trim().length >= 2 && setShowDropdown(true); }}
-              onBlur={() => setSearchFocused(false)}
-              placeholder={searchFocused ? "" : typewriterPlaceholder}
-              className="w-full h-12 pl-10 pr-10 rounded-full border-2 bg-white text-sm font-normal text-slate-700 placeholder:text-slate-500 outline-none transition-all duration-200"
-              style={{
-                borderColor: searchFocused ? BRAND_BLUE : "#94a3b8",
-                boxShadow: searchFocused ? `0 0 0 3px ${BRAND_BLUE}18` : "none",
+              ref={inputRef}
+              type="tel"
+              inputMode="numeric"
+              maxLength={6}
+              value={pincode}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, "");
+                setPincode(val);
+                if (status !== "idle") setStatus("idle");
               }}
-              data-testid="input-location-search"
+              onKeyDown={handleKeyDown}
+              placeholder="e.g. 400601"
+              className="w-full h-14 px-5 rounded-2xl border-2 text-xl font-bold text-center text-slate-800 tracking-[0.25em] outline-none transition-all duration-200 placeholder:text-slate-300 placeholder:font-normal placeholder:tracking-normal"
+              style={{
+                borderColor: status === "eligible"
+                  ? "#22c55e"
+                  : status === "ineligible"
+                  ? BRAND_ORANGE
+                  : BRAND_BLUE,
+                boxShadow: `0 0 0 3px ${status === "eligible" ? "#22c55e" : status === "ineligible" ? BRAND_ORANGE : BRAND_BLUE}18`,
+              }}
+              data-testid="input-pincode"
             />
-            {searchQuery && (
-              <button
-                onClick={() => { setSearchQuery(""); setSearchResults([]); setSearchStatus("idle"); setSearchMessage(""); setShowDropdown(false); }}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center hover:bg-slate-300 transition-colors"
-              >
-                <X className="w-3 h-3 text-slate-500" />
-              </button>
-            )}
           </div>
-          )}
 
-          {/* Search Dropdown */}
-          {!mapsError && showDropdown && (
-            <div className="absolute left-5 right-5 top-full mt-1 bg-white rounded-2xl border border-border/50 shadow-2xl z-20 overflow-hidden">
-              <button
-                onClick={async () => {
-                  setShowDropdown(false);
-                  setSearchQuery("");
-                  if (geoStatus === "detecting" || geoStatus === "serviceable") return;
-                  try {
-                    if (navigator.permissions) {
-                      const perm = await navigator.permissions.query({ name: "geolocation" });
-                      if (perm.state === "granted") { handleDetectLocation(); return; }
-                      if (perm.state === "denied") {
-                        setGeoStatus("denied");
-                        setGeoMessage("Location access denied. Please allow it in your browser settings.");
-                        return;
-                      }
-                    }
-                    setShowPermissionPopup(true);
-                  } catch { handleDetectLocation(); }
-                }}
-                disabled={geoStatus === "detecting"}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-orange-50 transition-colors border-b border-border/30"
-              >
-                <div className="w-9 h-9 rounded-full bg-white border border-slate-100 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
-                  <img src={googleMapsIcon} alt="Maps" className="w-7 h-7 object-contain" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-800">Use current location</p>
-                  <p className="text-xs text-slate-400 font-normal">Detect your area automatically</p>
-                </div>
-              </button>
-
-              {isSearching ? (
-                <div className="flex items-center gap-2 px-4 py-3 text-sm text-slate-400">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Finding locations...</span>
-                </div>
-              ) : searchResults.length === 0 && searchQuery.trim().length >= 2 ? (
-                <div className="px-4 py-3 text-sm text-slate-400 font-normal">No results found. Try a different term.</div>
-              ) : (
-                <div className="max-h-[280px] overflow-y-auto">
-                  {searchResults.map((prediction) => (
-                    <button
-                      key={prediction.place_id}
-                      onClick={() => handleSearchResultSelect(prediction)}
-                      className="w-full flex items-start gap-3 px-4 py-3.5 text-left hover:bg-slate-50 transition-colors border-b border-border/10 last:border-0"
-                    >
-                      <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
-                        <MapPin className="w-4 h-4 text-slate-400" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-slate-800 truncate">{prediction.structured_formatting.main_text}</p>
-                        <p className="text-xs text-slate-400 font-normal truncate mt-0.5">{prediction.structured_formatting.secondary_text}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Search feedback banners */}
-        {searchStatus === "serviceable" && (
-          <div className="mx-5 mb-2 shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-full bg-green-500 text-white text-sm font-normal">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span>{searchMessage}</span>
-          </div>
-        )}
-        {searchStatus === "unserviceable" && (
-          <div className="mx-5 mb-2 shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-full text-white text-sm font-normal" style={{ backgroundColor: BRAND_ORANGE }}>
-            <AlertCircle className="w-4 h-4 shrink-0 text-white" />
-            <span>{searchMessage}</span>
-          </div>
-        )}
-
-        {/* Use current location — hidden when maps unavailable */}
-        {!mapsError && (
-        <div className="px-5 pb-2 shrink-0">
+          {/* Check button */}
           <button
-            onClick={async () => {
-              if (geoStatus === "detecting" || geoStatus === "serviceable") return;
-              if (!navigator.geolocation) { handleDetectLocation(); return; }
-              try {
-                if (navigator.permissions) {
-                  const perm = await navigator.permissions.query({ name: "geolocation" });
-                  if (perm.state === "granted") { handleDetectLocation(); return; }
-                  if (perm.state === "denied") {
-                    setGeoStatus("denied");
-                    setGeoMessage("Location access denied. Please allow it in your browser settings.");
-                    return;
-                  }
-                }
-                setShowPermissionPopup(true);
-              } catch {
-                handleDetectLocation();
-              }
-            }}
-            disabled={geoStatus === "detecting" || geoStatus === "serviceable"}
-            data-testid="button-detect-location"
-            className="w-full flex items-center gap-4 px-4 py-3 hover:bg-slate-50 rounded-2xl transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            onClick={handleCheck}
+            disabled={pincode.length !== 6 || status === "checking"}
+            className="w-full h-13 py-3.5 rounded-2xl text-white font-bold text-base transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 mb-6"
+            style={{ backgroundColor: BRAND_BLUE }}
+            data-testid="button-check-pincode"
           >
-            {geoStatus === "detecting" ? (
-              <Loader2 className="w-12 h-12 animate-spin shrink-0" style={{ color: BRAND_BLUE }} />
+            {status === "checking" ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Checking...
+              </>
             ) : (
-              <img src={googleMapsIcon} alt="Maps" className="w-12 h-12 object-contain shrink-0" />
+              "Check Delivery Availability"
             )}
-            <div className="text-left">
-              <p className="text-lg font-bold text-slate-800 leading-tight">
-                {geoStatus === "detecting" ? "Detecting location..." : "Use current location"}
-              </p>
-              <p className="text-base text-slate-500 font-normal mt-0.5">Auto-detect & check serviceability</p>
-            </div>
           </button>
-        </div>
-        )}
 
-        {/* Location Permission Popup */}
-        {showPermissionPopup && (
-          <div className="fixed inset-0 z-[400] flex items-center justify-center px-4">
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowPermissionPopup(false)} />
-            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
-              <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: `${BRAND_BLUE}15` }}>
-                <Navigation className="w-9 h-9" style={{ color: BRAND_BLUE }} />
+          {/* Eligible result */}
+          {status === "eligible" && (
+            <div className="flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-300">
+              <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mb-3">
+                <CheckCircle2 className="w-7 h-7 text-green-600" />
               </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-2">Allow Location Access</h3>
-              <p className="text-sm text-slate-500 font-normal leading-relaxed mb-6">
-                We'll use your location to check if we deliver to your area and set the right hub automatically.
+              <p className="text-lg font-bold text-green-700">You're eligible for delivery!</p>
+              <p className="text-sm text-slate-500 mt-1">
+                We deliver fresh seafood &amp; meat to{" "}
+                <span className="font-semibold text-slate-700">{areaName}</span>.
               </p>
-              <div className="flex gap-3 w-full">
-                <button
-                  onClick={() => setShowPermissionPopup(false)}
-                  className="flex-1 h-12 rounded-2xl border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors"
-                >
-                  Not Now
-                </button>
-                <button
-                  onClick={() => { setShowPermissionPopup(false); handleDetectLocation(); }}
-                  className="flex-1 h-12 rounded-2xl text-white font-semibold text-sm transition-colors"
-                  style={{ backgroundColor: BRAND_BLUE }}
-                >
-                  Allow Location
-                </button>
-              </div>
+              <p className="text-xs text-slate-400 mt-3">Taking you to the store...</p>
             </div>
-          </div>
-        )}
-
-        {/* Geo Status Banner */}
-        {geoCfg && geoStatus !== "unserviceable" && geoStatus !== "denied" && geoStatus !== "error" && (
-          <div className={`mx-5 mb-2 shrink-0 flex items-center gap-2 p-3 rounded-xl border text-sm font-normal ${geoCfg.bg} ${geoCfg.text}`}>
-            {geoCfg.icon}
-            <span>{geoMessage}</span>
-          </div>
-        )}
-        {geoCfg && (geoStatus === "unserviceable" || geoStatus === "denied" || geoStatus === "error") && (
-          <div className="mx-5 mb-2 shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-full text-white text-sm font-normal" style={{ backgroundColor: BRAND_ORANGE }}>
-            <AlertCircle className="w-4 h-4 shrink-0 text-white" />
-            <span>{geoMessage}</span>
-          </div>
-        )}
-
-        {/* Divider */}
-        <div className="flex items-center gap-3 px-5 mb-3 shrink-0">
-          <div className="flex-1 h-px bg-slate-200" />
-          <span className="text-xs text-slate-400 font-normal tracking-wide">or select manually</span>
-          <div className="flex-1 h-px bg-slate-200" />
-        </div>
-
-        {/* Scrollable hub list */}
-        <div className="flex-1 overflow-y-auto px-5 pb-6 min-h-0">
-          {step === "super" ? (
-            loadingSuper ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-2xl bg-slate-100 animate-pulse" />)}
-              </div>
-            ) : superHubs.length === 0 ? (
-              <p className="text-center text-slate-400 py-8 text-sm font-normal">No cities available</p>
-            ) : (
-              <div className="space-y-3">
-                {superHubs.map(hub => {
-                  const isSelected = selectedSuperHub?.id === hub.id;
-                  return (
-                    <button
-                      key={hub.id}
-                      onClick={() => handleSuperSelect(hub)}
-                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left bg-white ${
-                        isSelected
-                          ? "border-[#364F9F]/40 shadow-sm"
-                          : "border-slate-200 hover:border-[#364F9F]/30 hover:bg-slate-50"
-                      }`}
-                      data-testid={`button-super-hub-${hub.id}`}
-                    >
-                      {hub.imageUrl ? (
-                        <img src={hub.imageUrl} alt={hub.name} className="w-16 h-16 rounded-xl object-cover shrink-0 shadow-sm" />
-                      ) : (
-                        <div className="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                          <MapPin className="w-7 h-7 text-slate-400" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-slate-800 text-lg">{hub.name}</p>
-                        {hub.location && <p className="text-base text-slate-500 font-normal truncate mt-0.5">{hub.location}</p>}
-                      </div>
-                      {isSelected && (
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: BRAND_BLUE }}>
-                          <Check className="w-4 h-4 text-white" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )
-          ) : (
-            loadingSub ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map(i => <div key={i} className="h-16 rounded-2xl bg-slate-100 animate-pulse" />)}
-              </div>
-            ) : subHubs.length === 0 ? (
-              <p className="text-center text-slate-400 py-8 text-sm font-normal">No areas available yet</p>
-            ) : (
-              <div className="space-y-2.5">
-                {subHubs.map(sub => {
-                  const isSelected = selectedSubHub?.id === sub.id;
-                  return (
-                    <button
-                      key={sub.id}
-                      onClick={() => handleSubSelect(sub)}
-                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left bg-white ${
-                        isSelected
-                          ? "border-[#364F9F]/40 shadow-sm"
-                          : "border-slate-200 hover:border-[#364F9F]/30 hover:bg-slate-50"
-                      }`}
-                      data-testid={`button-sub-hub-${sub.id}`}
-                    >
-                      {sub.imageUrl ? (
-                        <img src={sub.imageUrl} alt={sub.name} className="w-14 h-14 rounded-xl object-cover shrink-0 shadow-sm" />
-                      ) : (
-                        <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                          <MapPin className="w-6 h-6 text-slate-400" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-slate-800 text-lg">{sub.name}</p>
-                        {sub.location && <p className="text-base text-slate-500 font-normal truncate mt-0.5">{sub.location}</p>}
-                      </div>
-                      {isSelected && (
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: BRAND_BLUE }}>
-                          <Check className="w-4 h-4 text-white" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )
           )}
+
+          {/* Ineligible result */}
+          {status === "ineligible" && (
+            <div className="flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-300">
+              <div
+                className="w-14 h-14 rounded-full flex items-center justify-center mb-3"
+                style={{ backgroundColor: `${BRAND_ORANGE}18` }}
+              >
+                <AlertCircle className="w-7 h-7" style={{ color: BRAND_ORANGE }} />
+              </div>
+              <p className="text-lg font-bold text-slate-800">Not in our delivery zone yet</p>
+              <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+                Sorry, we don't deliver to <span className="font-semibold">{pincode}</span> at the moment.
+              </p>
+            </div>
+          )}
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* WhatsApp CTA — always visible at bottom, more prominent when ineligible */}
+          <div
+            className={`mt-6 rounded-2xl p-4 border transition-all duration-300 ${
+              status === "ineligible"
+                ? "border-green-200 bg-green-50"
+                : "border-slate-200 bg-slate-50"
+            }`}
+          >
+            {status === "ineligible" && (
+              <p className="text-sm font-semibold text-slate-700 mb-1 text-center">
+                Need delivery to a longer distance?
+              </p>
+            )}
+            <p className="text-xs text-slate-500 text-center mb-3 leading-relaxed">
+              {status === "ineligible"
+                ? "Contact us on WhatsApp — we'll do our best to arrange it for you!"
+                : "For bulk or long-distance orders, connect with us directly."}
+            </p>
+            <a
+              href={`https://wa.me/${WHATSAPP_NUMBER}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full h-12 rounded-xl text-white font-bold text-sm transition-opacity hover:opacity-90"
+              style={{ backgroundColor: "#25D366" }}
+              data-testid="button-whatsapp-order"
+            >
+              <MessageCircle className="w-5 h-5" />
+              Connect via WhatsApp
+            </a>
+          </div>
         </div>
       </div>
     </div>
