@@ -572,14 +572,15 @@ export function CartDrawer() {
     // - then remaining cash/UPI entry
     // - pure COD with no wallet → payments stays [] (unpaid until delivery)
     const cashMode = paymentMethod === "online" ? "upi" : "cash";
-    const orderPayments: Array<{ mode: string; amount: number; reference: string }> = [];
+    const paidAt = new Date().toISOString();
+    const orderPayments: Array<{ mode: string; amount: number; reference: string; paidAt: string }> = [];
     if (walletDeduction > 0) {
-      orderPayments.push({ mode: "wallet", amount: walletDeduction, reference: "" });
+      orderPayments.push({ mode: "wallet", amount: walletDeduction, reference: "", paidAt });
       if (finalTotal > 0) {
-        orderPayments.push({ mode: cashMode, amount: finalTotal, reference: "" });
+        orderPayments.push({ mode: cashMode, amount: finalTotal, reference: "", paidAt });
       }
     } else if (paymentMethod === "online") {
-      orderPayments.push({ mode: "upi", amount: rawTotal, reference: "" });
+      orderPayments.push({ mode: "upi", amount: rawTotal, reference: "", paidAt });
     }
     // pure COD (no wallet): orderPayments stays []
 

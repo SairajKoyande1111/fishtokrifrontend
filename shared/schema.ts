@@ -195,6 +195,10 @@ export type InsertOrderRequest = {
   discountAmount?: number | null;
   paymentMode?: string | null;
   walletAmountUsed?: number | null;
+  payments?: Array<{ mode: string; amount: number; reference?: string; paidAt?: string }> | null;
+  paidAmount?: number | null;
+  dueAmount?: number | null;
+  paymentStatus?: string | null;
   superHubId?: string | null;
   subHubId?: string | null;
   subHubName?: string | null;
@@ -305,6 +309,7 @@ export const insertOrderRequestSchema = z.object({
     mode: z.string(),
     amount: z.number(),
     reference: z.string().optional(),
+    paidAt: z.string().optional(),
   })).nullable().optional(),
   paidAmount: z.number().nullable().optional(),
   dueAmount: z.number().nullable().optional(),
