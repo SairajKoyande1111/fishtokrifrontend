@@ -132,7 +132,7 @@ const ORDERS_PER_PAGE = 5;
 function getOrderTotal(order: OrderRequest) {
   const items: OrderItem[] = Array.isArray(order.items) ? order.items as OrderItem[] : [];
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const deliveryFee = subtotal >= 500 ? 0 : 49;
+  const deliveryFee = (order as any).slotCharge ?? 0;
   const discount = (order as any).coupon?.discountAmount ?? 0;
   return subtotal + deliveryFee - discount;
 }
@@ -360,7 +360,6 @@ function downloadInvoicePDF(order: OrderRequest, items: OrderItem[], subtotal: n
     <div class="row"><span>Subtotal</span><span>₹${subtotal.toLocaleString()}</span></div>
     <div class="row ${deliveryFee === 0 ? 'free' : ''}"><span>Delivery Fee</span><span>${deliveryFee === 0 ? 'FREE' : '₹' + deliveryFee}</span></div>
     ${discount > 0 ? `<div class="row discount"><span>Coupon Discount${couponCode ? ` (${couponCode})` : ''}</span><span>-₹${discount.toLocaleString()}</span></div>` : ''}
-    <div class="row"><span>GST (5%)</span><span>Included</span></div>
     <div class="row total"><span>Total</span><span>₹${total.toLocaleString()}</span></div>
   </div>
 
@@ -385,7 +384,7 @@ function OrderCard({ order, productImageMap }: { order: OrderRequest; productIma
   const [expanded, setExpanded] = useState(false);
   const items: OrderItem[] = Array.isArray(order.items) ? order.items as OrderItem[] : [];
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const deliveryFee = subtotal >= 500 ? 0 : 49;
+  const deliveryFee = (order as any).slotCharge ?? 0;
   const discount = (order as any).coupon?.discountAmount ?? 0;
   const total = subtotal + deliveryFee - discount;
   const status = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
@@ -566,9 +565,6 @@ function OrderCard({ order, productImageMap }: { order: OrderRequest; productIma
                   <span>-₹{discount.toLocaleString()}</span>
                 </div>
               )}
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>GST (5%)</span><span>Included</span>
-              </div>
               <div className="flex justify-between text-sm font-bold text-foreground pt-2 border-t border-slate-200">
                 <span>Total</span><span>₹{total.toLocaleString()}</span>
               </div>

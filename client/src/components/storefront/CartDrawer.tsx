@@ -385,13 +385,13 @@ export function CartDrawer() {
     return `${h}:${String(m).padStart(2, "0")} ${period}`;
   }, [parseTimeStr]);
 
-  // Returns the slot label adjusted for pincode time delay
+  // Returns the slot label adjusted for pincode time delay (only end time shifts)
   const getAdjustedSlotLabel = useCallback((slot: Timeslot): string => {
     if (slot.isInstant || pincodeTimeDelay === 0) return slot.label;
     const start = slot.startTime ? format24to12(slot.startTime) : null;
     const end = slot.endTime ? format24to12(slot.endTime) : null;
     if (start && end) {
-      return `${addMinutesToTime(start, pincodeTimeDelay)} – ${addMinutesToTime(end, pincodeTimeDelay)}`;
+      return `${start} – ${addMinutesToTime(end, pincodeTimeDelay)}`;
     }
     return slot.label;
   }, [pincodeTimeDelay, format24to12, addMinutesToTime]);
@@ -970,9 +970,6 @@ export function CartDrawer() {
                             <span className="font-semibold text-emerald-600">FREE</span>
                           )}
                         </div>
-                        {pincodeTimeDelay > 0 && selectedTimeslot && !selectedTimeslot.isInstant && (
-                          <p className="text-[11px] text-amber-600/80 italic">+{pincodeTimeDelay} min extra delivery time for your area</p>
-                        )}
                         {selectedTimeslot?.isInstant && (selectedTimeslot.extraCharge ?? 0) > 0 && (
                           <div className="flex justify-between text-sm">
                             <span className="text-amber-600 text-xs">Instant delivery (Porter)</span>
@@ -1278,9 +1275,6 @@ export function CartDrawer() {
                                       <span className={`text-sm font-semibold block truncate ${slot.isInstant ? "text-amber-700" : "text-foreground"}`}>
                                         {adjustedLabel}
                                       </span>
-                                      {hasDelay && (
-                                        <span className="text-[10px] text-amber-600">+{pincodeTimeDelay} min for your area</span>
-                                      )}
                                     </div>
                                     {slot.isInstant && (slot.extraCharge ?? 0) > 0 ? (
                                       <span className="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full shrink-0">+₹{slot.extraCharge}</span>

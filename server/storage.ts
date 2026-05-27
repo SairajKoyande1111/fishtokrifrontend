@@ -73,6 +73,7 @@ function toOrder(doc: any): OrderRequest {
     deliveryType: doc.deliveryType ?? null,
     timeslotLabel: doc.timeslotLabel ?? null,
     instantDeliveryCharge: doc.instantDeliveryCharge ?? null,
+    slotCharge: doc.slotCharge ?? 0,
     coupon: doc.coupon
       ? {
           couponId: doc.coupon.couponId?.toString() ?? null,
