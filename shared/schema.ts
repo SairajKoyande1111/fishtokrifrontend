@@ -300,6 +300,7 @@ export const insertOrderRequestSchema = z.object({
   discountAmount: z.number().nullable().optional(),
   paymentMethod: z.string().nullable().optional(),
   paymentMode: z.string().nullable().optional(),
+  walletAmountUsed: z.number().nullable().optional(),
 });
 
 export const insertUserSchema = z.object({

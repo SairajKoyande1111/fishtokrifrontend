@@ -1,3 +1,4 @@
 - [Coupon state in CartContext](coupon-context.md) — appliedCoupon/setAppliedCoupon/discountAmount live in CartContext, not CartDrawer; shared with product/combo detail pages.
 - [Timeslots are DB-only](timeslots-db-only.md) — no auto-seeding, no hardcoded NEXT_DAY slot; admin adds all timeslots from panel; isInstant handled by timeslot doc's isInstant field.
 - [Expired batch handling](expired-batches.md) — toProduct mapper in routes.ts filters expired batches; if all batches expired → status becomes "unavailable"; combo sections filter these products client-side.
+- [Order schema strips unknown fields](order-schema-zod.md) — new order payload fields MUST be added to insertOrderRequestSchema in shared/schema.ts or Zod silently drops them before the route handler sees them.
