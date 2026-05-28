@@ -341,24 +341,24 @@ export default function Home() {
                                     return (
                                       <div
                                         onClick={(e) => e.stopPropagation()}
-                                        className="flex items-center gap-0 rounded-full bg-primary shadow-md overflow-hidden"
+                                        className="flex items-center gap-0 rounded-full bg-primary shadow-md overflow-hidden shrink-0"
                                         data-testid={`stepper-combo-${combo.id}`}
                                       >
                                         <button
                                           onClick={(e) => { e.stopPropagation(); if (comboQty <= 1) { removeFromCart(comboCartId); } else { updateQuantity(comboCartId, comboQty - 1); } }}
-                                          className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+                                          className="w-7 h-7 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
                                         >
-                                          <Minus className="w-4 h-4" />
+                                          <Minus className="w-3 h-3" />
                                         </button>
-                                        <span className="text-white font-semibold text-sm min-w-[20px] text-center select-none">
+                                        <span className="text-white font-semibold text-xs min-w-[16px] text-center select-none">
                                           {comboQty}
                                         </span>
                                         <button
                                           onClick={(e) => { e.stopPropagation(); addToCart(buildComboPayload()); }}
                                           disabled={comboQty >= comboMaxQty}
-                                          className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/20 transition-colors disabled:opacity-40"
+                                          className="w-7 h-7 flex items-center justify-center text-white hover:bg-white/20 transition-colors disabled:opacity-40"
                                         >
-                                          <Plus className="w-4 h-4" />
+                                          <Plus className="w-3 h-3" />
                                         </button>
                                       </div>
                                     );

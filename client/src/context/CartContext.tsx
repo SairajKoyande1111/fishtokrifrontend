@@ -181,8 +181,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return;
     }
     toast({
-      title: "Added to order",
-      description: `${quantity}x ${product.name} added.`,
+      title: "Fresh catch added to your Tokri!",
       duration: 2000,
     });
     if (openCart) setIsCartOpen(true);
