@@ -96,9 +96,9 @@ function ComboHeroImage({ productImages, productCategories, name, tags }: {
   );
 }
 
-function CouponCard({ code, desc, onApply, isApplied }: { code: string; desc: string; onApply: () => void; isApplied: boolean }) {
+function CouponCard({ code, desc }: { code: string; desc: string; onApply?: () => void; isApplied?: boolean }) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-background hover:bg-muted/10 transition-colors">
+    <div className="flex items-center px-4 py-3 bg-background hover:bg-muted/10 transition-colors">
       <div className="flex items-start gap-2.5 min-w-0 flex-1">
         <span
           aria-hidden
@@ -125,14 +125,6 @@ function CouponCard({ code, desc, onApply, isApplied }: { code: string; desc: st
           <p className="text-xs text-muted-foreground mt-1 whitespace-normal break-words leading-snug">{desc}</p>
         </div>
       </div>
-      <button
-        onClick={onApply}
-        className="flex items-center gap-1 text-xs font-bold ml-3 shrink-0 px-3 py-1.5 rounded-full text-white transition-colors"
-        style={{ backgroundColor: isApplied ? "#047857" : "#364F9F" }}
-      >
-        {isApplied && <Check className="w-3 h-3" />}
-        {isApplied ? "Applied" : "Apply"}
-      </button>
     </div>
   );
 }
