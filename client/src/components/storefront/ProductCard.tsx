@@ -1,4 +1,4 @@
-import { Plus, Info } from "lucide-react";
+import { Plus, Minus, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/context/CartContext";
@@ -19,10 +19,12 @@ const DUMMY_DETAILS: Record<string, { pieces: string; serves: string }> = {
 };
 
 export function ProductCard({ product }: { product: Product }) {
-  const { addToCart, removeFromCart, items } = useCart();
+  const { addToCart, removeFromCart, updateQuantity, items, computeMaxQty } = useCart();
   const [, setLocation] = useLocation();
   const isUnavailable = product.status === "unavailable";
-  const isInCart = items.some(i => i.id === product.id);
+
+  const cartItem = items.find(i => i.id === product.id);
+  const qty = cartItem?.quantity ?? 0;
 
   const getFallbackImage = (category: string) => {
     switch (category) {
@@ -38,6 +40,27 @@ export function ProductCard({ product }: { product: Product }) {
   const hasDiscount = product.originalPrice != null && product.price != null && product.originalPrice > product.price;
   const discountPct = hasDiscount ? Math.round((product.originalPrice! - product.price!) / product.originalPrice! * 100) : null;
   const strikePrice = hasDiscount ? product.originalPrice : null;
+
+  const maxQty = cartItem ? computeMaxQty(cartItem) : 999;
+
+  const handleAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    addToCart(product);
+  };
+
+  const handleIncrease = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    addToCart(product);
+  };
+
+  const handleDecrease = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (qty <= 1) {
+      removeFromCart(product.id);
+    } else {
+      updateQuantity(product.id, qty - 1);
+    }
+  };
 
   return (
     <div
@@ -99,23 +122,50 @@ export function ProductCard({ product }: { product: Product }) {
             {strikePrice && <span className="text-sm text-muted-foreground line-through">₹{strikePrice}</span>}
             {discountPct && <span className="text-sm font-semibold text-green-600">{discountPct}% off</span>}
           </div>
-          <Button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (isInCart) {
-                removeFromCart(product.id);
-              } else {
-                addToCart(product);
-              }
-            }}
-            disabled={isUnavailable}
-            className={`rounded-full w-9 h-9 p-0 text-white shadow-md flex items-center justify-center shrink-0 transition-colors ${
-              isInCart ? "bg-[#F05B4E] hover:bg-[#F05B4E]" : "bg-primary hover:bg-[#F05B4E]"
-            }`}
-            size="icon"
-          >
-            {isUnavailable ? <span className="text-[10px]">Out</span> : <Plus className="w-5 h-5 text-white" />}
-          </Button>
+
+          {isUnavailable ? (
+            <Button
+              disabled
+              className="rounded-full w-9 h-9 p-0 text-white shadow-md flex items-center justify-center shrink-0 bg-muted"
+              size="icon"
+            >
+              <span className="text-[10px]">Out</span>
+            </Button>
+          ) : qty === 0 ? (
+            <Button
+              onClick={handleAdd}
+              data-testid={`button-add-product-${product.id}`}
+              className="rounded-full w-9 h-9 p-0 text-white shadow-md flex items-center justify-center shrink-0 bg-primary hover:bg-[#F05B4E] transition-colors"
+              size="icon"
+            >
+              <Plus className="w-5 h-5 text-white" />
+            </Button>
+          ) : (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-0 rounded-full bg-primary shadow-md overflow-hidden"
+              data-testid={`stepper-product-${product.id}`}
+            >
+              <button
+                onClick={handleDecrease}
+                data-testid={`button-decrease-product-${product.id}`}
+                className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+              <span className="text-white font-semibold text-sm min-w-[20px] text-center select-none">
+                {qty}
+              </span>
+              <button
+                onClick={handleIncrease}
+                disabled={qty >= maxQty}
+                data-testid={`button-increase-product-${product.id}`}
+                className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/20 transition-colors disabled:opacity-40"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
