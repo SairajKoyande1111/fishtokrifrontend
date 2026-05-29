@@ -477,12 +477,7 @@ export async function registerRoutes(
   // Orders routes
   app.post(api.orders.create.path, async (req, res) => {
     try {
-      console.log("[ORDER_DEBUG] body.payments:", JSON.stringify(req.body.payments));
-      console.log("[ORDER_DEBUG] body.paymentStatus:", req.body.paymentStatus);
-      console.log("[ORDER_DEBUG] body.paidAmount:", req.body.paidAmount);
       const input = api.orders.create.input.parse(req.body);
-      console.log("[ORDER_DEBUG] input.payments after parse:", JSON.stringify(input.payments));
-      console.log("[ORDER_DEBUG] input.paymentStatus after parse:", input.paymentStatus);
 
       // FIFO inventory deduction if hubDbName is provided
       if (input.hubDbName) {
