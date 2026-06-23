@@ -22,8 +22,9 @@ function toUser(doc: any): User {
 }
 
 function toCustomer(doc: any): Customer {
+  if (!doc) throw new Error("toCustomer called with null/undefined document");
   return {
-    id: doc._id.toString(),
+    id: doc._id?.toString() ?? "",
     phone: doc.phone,
     name: doc.name ?? null,
     email: doc.email ?? null,

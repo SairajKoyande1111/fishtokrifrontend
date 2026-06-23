@@ -1456,28 +1456,36 @@ export async function registerRoutes(
   });
 
   app.post("/api/customer/verify-otp", async (req, res) => {
-    const { phone, otp } = req.body;
-    if (!phone || !otp) return res.status(400).json({ message: "phone and otp required" });
-    const normalised = String(phone).trim();
-    const entry = otpStore.get(normalised);
-    if (!entry || Date.now() > entry.expiresAt || entry.otp !== String(otp).trim()) {
-      return res.status(400).json({ message: "Invalid or expired OTP" });
+    try {
+      const { phone, otp } = req.body;
+      if (!phone || !otp) return res.status(400).json({ message: "phone and otp required" });
+      const normalised = String(phone).trim();
+      const entry = otpStore.get(normalised);
+      if (!entry || Date.now() > entry.expiresAt || entry.otp !== String(otp).trim()) {
+        return res.status(400).json({ message: "Invalid or expired OTP" });
+      }
+
+      // Only delete the OTP AFTER a successful upsert so users can retry if DB fails
+      const customer = await storage.upsertCustomer(normalised, { phone: normalised });
+      otpStore.delete(normalised);
+
+      req.session.customerPhone = normalised;
+
+      // Explicitly save the session before responding to avoid race condition
+      // where the response is sent before the session is written to MongoDB
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => (err ? reject(err) : resolve()));
+      });
+
+      // Send welcome WhatsApp message (fire-and-forget)
+      const displayName = (customer as any)?.name || "there";
+      sendWhatsApp("fishtokri_welcome", normalised, [displayName]).catch(() => {});
+
+      res.json(customer);
+    } catch (err: any) {
+      console.error("[verify-otp] Error:", err);
+      res.status(500).json({ message: "Failed to verify OTP. Please try again." });
     }
-    otpStore.delete(normalised);
-    const customer = await storage.upsertCustomer(normalised, { phone: normalised });
-    req.session.customerPhone = normalised;
-
-    // Explicitly save the session before responding to avoid race condition
-    // where the response is sent before the session is written to MongoDB
-    await new Promise<void>((resolve, reject) => {
-      req.session.save((err) => (err ? reject(err) : resolve()));
-    });
-
-    // Send welcome WhatsApp message (fire-and-forget)
-    const displayName = (customer as any)?.name || "there";
-    sendWhatsApp("fishtokri_welcome", normalised, [displayName]).catch(() => {});
-
-    res.json(customer);
   });
 
   app.get("/api/customer/me", requireCustomer, async (req, res) => {
