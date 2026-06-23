@@ -732,13 +732,13 @@ export function CartDrawer() {
         },
         config: {
           display: {
-            hide: [
-              { method: "card" },
-              { method: "netbanking" },
-              { method: "wallet" },
-              { method: "emi" },
-              { method: "paylater" },
-            ],
+            blocks: {
+              upi_block: {
+                name: "Pay via UPI",
+                instruments: [{ method: "upi" }],
+              },
+            },
+            sequence: ["block.upi_block"],
             preferences: { show_default_blocks: false },
           },
         },
