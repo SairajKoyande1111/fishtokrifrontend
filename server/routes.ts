@@ -8,7 +8,7 @@ import { setupAuth } from "./auth";
 import { connectOrdersDb, generateOrderId, getOrderModel } from "./ordersDb";
 import { setImage, getImage, deleteImage } from "./imageStore";
 import { insertCarouselSlideSchema, insertCategorySchema, insertSectionSchema, insertComboSchema, insertCustomerAddressSchema, updateCustomerSchema, insertInventoryBatchSchema } from "@shared/schema";
-import { SuperHubModel, SubHubModel } from "./adminDb";
+import { SuperHubModel, SubHubModel, OtpModel } from "./adminDb";
 import { getHubModels } from "./hubConnections";
 import { CustomerDbModel } from "./customerDb";
 import { computeExpiryDate, computeRemainingTime } from "./inventorySync";
@@ -21,8 +21,6 @@ declare module "express-session" {
   }
 }
 
-// In-memory OTP store: phone -> { otp, expiresAt }
-const otpStore = new Map<string, { otp: string; expiresAt: number }>();
 const OTP_TTL_MS = 5 * 60 * 1000;
 
 // ── AiSensy WhatsApp helper ───────────────────────────────────────────────
@@ -1440,9 +1438,14 @@ export async function registerRoutes(
     }
     const normalised = String(phone).trim();
 
-    // Generate a secure 4-digit OTP
+    // Generate a secure 4-digit OTP and persist to MongoDB (survives restarts + multi-instance)
     const otp = String(Math.floor(1000 + Math.random() * 9000));
-    otpStore.set(normalised, { otp, expiresAt: Date.now() + OTP_TTL_MS });
+    const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+    await OtpModel.findOneAndUpdate(
+      { phone: normalised },
+      { otp, expiresAt },
+      { upsert: true, new: true }
+    );
 
     // Send via AiSensy WhatsApp
     const apiKey = process.env.AISENSY_API_KEY;
@@ -1506,14 +1509,16 @@ export async function registerRoutes(
       const { phone, otp } = req.body;
       if (!phone || !otp) return res.status(400).json({ message: "phone and otp required" });
       const normalised = String(phone).trim();
-      const entry = otpStore.get(normalised);
-      if (!entry || Date.now() > entry.expiresAt || entry.otp !== String(otp).trim()) {
+
+      // Look up OTP from MongoDB (shared across all PM2 instances and restarts)
+      const entry = await OtpModel.findOne({ phone: normalised }).lean() as any;
+      if (!entry || new Date() > new Date(entry.expiresAt) || entry.otp !== String(otp).trim()) {
         return res.status(400).json({ message: "Invalid or expired OTP" });
       }
 
       // Only delete the OTP AFTER a successful upsert so users can retry if DB fails
       const customer = await storage.upsertCustomer(normalised, { phone: normalised });
-      otpStore.delete(normalised);
+      await OtpModel.deleteOne({ phone: normalised });
 
       req.session.customerPhone = normalised;
 

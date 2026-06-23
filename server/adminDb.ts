@@ -56,3 +56,13 @@ export const SubHubModel =
 export const UserModel =
   adminConnection.models.User ||
   adminConnection.model("User", userSchema, "users");
+
+const otpSchema = new mongoose.Schema({
+  phone: { type: String, required: true, unique: true },
+  otp: { type: String, required: true },
+  expiresAt: { type: Date, required: true, index: { expires: 0 } },
+});
+
+export const OtpModel =
+  adminConnection.models.Otp ||
+  adminConnection.model("Otp", otpSchema, "otps");
