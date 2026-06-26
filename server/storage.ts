@@ -76,7 +76,12 @@ function toOrder(doc: any): OrderRequest {
     timeslotLabel: doc.timeslotLabel ?? null,
     instantDeliveryCharge: doc.instantDeliveryCharge ?? null,
     slotCharge: doc.slotCharge ?? 0,
+    deliveryCharge: doc.deliveryCharge ?? 0,
     discount: doc.discount ?? 0,
+    extraDiscount: doc.extraDiscount ?? 0,
+    extraDiscountType: doc.extraDiscountType ?? null,
+    scheduleType: doc.scheduleType ?? null,
+    isExpress: doc.isExpress ?? false,
     total: doc.total ?? null,
     coupon: (doc.coupons?.[0] ?? doc.coupon)
       ? (() => {

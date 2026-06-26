@@ -133,18 +133,21 @@ type OrdersSubTab = "current" | "previous";
 
 const ORDERS_PER_PAGE = 5;
 
-function isInstantOrder(order: OrderRequest) {
+function isExpressOrder(order: OrderRequest) {
+  if (order.isExpress) return true;
+  if (order.scheduleType === "express" || order.scheduleType === "instant") return true;
   const label = (order.timeslotLabel ?? "").toLowerCase();
-  return label.includes("porter") || label.includes("instant");
+  return label.includes("porter") || label.includes("instant") || label.includes("express");
 }
 
 function getOrderTotal(order: OrderRequest) {
-  if ((order as any).total != null) return (order as any).total;
+  if (order.total != null) return order.total;
   const items: OrderItem[] = Array.isArray(order.items) ? order.items as OrderItem[] : [];
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const slotCharge = (order as any).slotCharge ?? 0;
-  const discount = (order as any).discount ?? (order as any).coupon?.discountAmount ?? 0;
-  return subtotal + slotCharge - discount;
+  const slotCharge = order.slotCharge ?? 0;
+  const deliveryCharge = order.deliveryCharge ?? 0;
+  const totalDiscount = (order.discount ?? 0) + (order.extraDiscount ?? 0);
+  return subtotal + slotCharge + deliveryCharge - totalDiscount;
 }
 
 const TRACK_STEPS = [
@@ -434,15 +437,18 @@ function OrderCard({ order, productImageMap }: { order: OrderRequest; productIma
   const [expanded, setExpanded] = useState(false);
   const items: OrderItem[] = Array.isArray(order.items) ? order.items as OrderItem[] : [];
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const slotCharge = (order as any).slotCharge ?? 0;
-  const isInstant = isInstantOrder(order);
-  const porterCharge = isInstant ? slotCharge : 0;
-  const deliveryFee = isInstant ? 0 : slotCharge;
-  const totalDiscount = (order as any).discount ?? (order as any).coupon?.discountAmount ?? 0;
-  const couponDiscount = (order as any).coupon?.discountAmount ?? 0;
-  const extraDiscount = Math.max(0, totalDiscount - couponDiscount);
-  const discount = totalDiscount;
-  const total = (order as any).total ?? (subtotal + slotCharge - discount);
+  const slotCharge = order.slotCharge ?? 0;
+  const dbDeliveryCharge = order.deliveryCharge ?? 0;
+  const isExpress = isExpressOrder(order);
+  // Porter charge: express orders use deliveryCharge (admin) or slotCharge (webapp)
+  const porterCharge = isExpress ? (dbDeliveryCharge || slotCharge) : 0;
+  // Regular delivery fee: non-express slotCharge
+  const deliveryFee = isExpress ? 0 : slotCharge;
+  // Discounts: coupon discount and extra discount are separate fields
+  const couponDiscount = order.coupon?.discountAmount ?? 0;
+  const extraDiscount = order.extraDiscount ?? 0;
+  const discount = (order.discount ?? couponDiscount) + extraDiscount;
+  const total = order.total ?? (subtotal + porterCharge + deliveryFee - couponDiscount - extraDiscount);
   const status = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
   const date = order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-IN", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"

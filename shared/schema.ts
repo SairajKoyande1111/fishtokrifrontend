@@ -151,6 +151,13 @@ export type OrderRequest = {
   deliveryType?: string | null;
   timeslotLabel?: string | null;
   instantDeliveryCharge?: number | null;
+  slotCharge?: number | null;
+  deliveryCharge?: number | null;
+  discount?: number | null;
+  extraDiscount?: number | null;
+  extraDiscountType?: string | null;
+  scheduleType?: string | null;
+  isExpress?: boolean | null;
   coupon?: OrderCoupon | null;
   paymentMethod?: string | null;
   superHubId?: string | null;
