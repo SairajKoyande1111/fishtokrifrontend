@@ -16,6 +16,7 @@ import {
   ChevronDown, ChevronUp,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { SwipeHint } from "@/components/storefront/SwipeHint";
 import type { Product } from "@shared/schema";
@@ -142,6 +143,7 @@ export default function ProductDetail() {
   const [showAllCoupons, setShowAllCoupons] = useState(false);
   const [, params] = useRoute("/product/:id");
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const { data: products, isLoading } = useProducts();
   const { addToCart, updateQuantity, appliedCoupon, setAppliedCoupon, items: cartItems } = useCart();
   const { customer, openLoginModal } = useCustomer();
@@ -152,6 +154,19 @@ export default function ProductDetail() {
   const productId = params?.id;
   const product = products?.find((p) => p.id === productId);
   const isUnavailable = product?.status === "unavailable";
+
+  // Auto-redirect to home when the product disappears from the list (went out of stock
+  // after ordering or due to a background stock poll). Show a toast so the user knows why.
+  useEffect(() => {
+    if (!isLoading && products !== undefined && !product && productId) {
+      toast({
+        title: "This item is now out of stock",
+        description: "You've been redirected to the home screen.",
+        variant: "destructive",
+      });
+      setLocation("/");
+    }
+  }, [isLoading, products, product, productId, setLocation, toast]);
 
   // Inventory cap — same logic as home screen and ComboDetail
   const cartItem = cartItems.find(i => (i.originalId ?? String(i.id)) === product?.id);
@@ -207,17 +222,9 @@ export default function ProductDetail() {
   }
 
   if (!product || !dummy) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
-        <Header
-          onSearchSubmit={(q) => setLocation(q ? `/?q=${encodeURIComponent(q)}` : "/")}
-          collapsibleMobileSearch
-        />
-        <p className="text-muted-foreground text-lg">Product not found.</p>
-        <Button onClick={() => setLocation("/")}>Go Home</Button>
-        <CartDrawer />
-      </div>
-    );
+    // The useEffect above will redirect to home. Render a blank screen in the
+    // interim so there's no jarring "Product not found." flash behind the cart drawer.
+    return <div className="min-h-screen bg-background" />;
   }
 
   return (
