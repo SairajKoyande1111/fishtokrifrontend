@@ -531,44 +531,116 @@ export async function registerRoutes(
     try {
       const input = api.orders.create.input.parse(req.body);
 
-      // FIFO inventory deduction if hubDbName is provided
-      if (input.hubDbName) {
+      // ── Pre-flight: coupon usage check (runs BEFORE inventory is touched) ───
+      if (input.hubDbName && input.couponCode) {
         try {
           const hub = await getHubModels(input.hubDbName);
-          for (const item of input.items) {
-            const product = await hub.Product.findById(item.productId).lean() as any;
-            if (!product || !product.inventoryBatches || product.inventoryBatches.length === 0) continue;
-
-            // Sort batches by entryDate ascending (oldest first = FIFO)
-            const sortedBatches = [...product.inventoryBatches].sort(
-              (a: any, b: any) => new Date(a.entryDate).getTime() - new Date(b.entryDate).getTime()
-            );
-
-            let remaining = item.quantity;
-            for (const batch of sortedBatches) {
-              if (remaining <= 0) break;
-              const deduct = Math.min(batch.quantity, remaining);
-              remaining -= deduct;
-              if (deduct >= batch.quantity) {
-                // Remove this batch entirely
-                await hub.Product.findByIdAndUpdate(item.productId, {
-                  $pull: { inventoryBatches: { _id: batch._id } },
-                });
-              } else {
-                // Partially deduct from this batch
-                await hub.Product.findOneAndUpdate(
-                  { _id: item.productId, "inventoryBatches._id": batch._id },
-                  { $inc: { "inventoryBatches.$.quantity": -deduct } }
-                );
+          const code = String(input.couponCode).trim().toUpperCase();
+          const coupon = await hub.Coupon.findOne({ code, isActive: true }).lean() as any;
+          if (coupon && coupon.maxUsage != null && Number(coupon.maxUsage) > 0) {
+            const couponId = String(coupon._id);
+            const phone = String(input.phone ?? "");
+            if (phone) {
+              const custDoc = await CustomerDbModel.findOne(
+                { phone },
+                { activeCoupons: 1, usedCoupons: 1 }
+              ).lean() as any;
+              const activeEntry = (custDoc?.activeCoupons ?? []).find(
+                (ac: any) => String(ac.couponId) === couponId
+              );
+              const activeCount = activeEntry
+                ? (activeEntry.usedCount != null ? Number(activeEntry.usedCount) : 1)
+                : 0;
+              const historicalCount = (custDoc?.usedCoupons ?? []).filter(
+                (uc: any) => String(uc.couponId) === couponId
+              ).length;
+              if (activeCount + historicalCount >= Number(coupon.maxUsage)) {
+                return res.status(400).json({ message: "CouponUsageLimitReached" });
               }
             }
-            // Recalculate total quantity from remaining batches
-            const updated = await hub.Product.findById(item.productId).lean() as any;
-            const totalQty = (updated.inventoryBatches ?? []).reduce((sum: number, b: any) => sum + b.quantity, 0);
-            await hub.Product.findByIdAndUpdate(item.productId, { quantity: totalQty, updatedAt: new Date() });
           }
-        } catch (deductErr) {
-          console.error("FIFO deduction error:", deductErr);
+        } catch (couponPreflightErr) {
+          console.error("Coupon pre-flight check error:", couponPreflightErr);
+          return res.status(500).json({ message: "Could not verify coupon. Please try again." });
+        }
+      }
+
+      // FIFO inventory deduction if hubDbName is provided (atomic per-batch to prevent overselling)
+      if (input.hubDbName) {
+        const hub = await getHubModels(input.hubDbName);
+        for (const item of input.items) {
+          // Always fetch the LATEST quantity from DB right before deducting
+          const product = await hub.Product.findById(item.productId).lean() as any;
+          if (!product || !product.inventoryBatches || product.inventoryBatches.length === 0) continue;
+
+          // Pre-flight stock check against current DB state
+          const totalAvailable = (product.inventoryBatches as any[]).reduce(
+            (sum: number, b: any) => sum + b.quantity, 0
+          );
+          if (totalAvailable < item.quantity) {
+            return res.status(409).json({
+              message: `"${product.name}" has only ${totalAvailable} unit(s) available. Please update your cart.`,
+            });
+          }
+
+          // Sort batches by entryDate ascending (oldest first = FIFO)
+          const sortedBatches = [...product.inventoryBatches].sort(
+            (a: any, b: any) => new Date(a.entryDate).getTime() - new Date(b.entryDate).getTime()
+          );
+
+          let remaining = item.quantity;
+          for (const batch of sortedBatches) {
+            if (remaining <= 0) break;
+            // Atomically deduct only if this batch still has at least `deduct` units.
+            // If a concurrent order has taken some (but not all) stock from this batch,
+            // we re-read the current quantity and retry with the lesser amount (up to 5 times).
+            let deduct = Math.min(batch.quantity, remaining);
+            let deducted = false;
+            for (let attempt = 0; attempt < 5; attempt++) {
+              const atomicResult = await hub.Product.findOneAndUpdate(
+                {
+                  _id: item.productId,
+                  inventoryBatches: { $elemMatch: { _id: batch._id, quantity: { $gte: deduct } } },
+                },
+                { $inc: { "inventoryBatches.$.quantity": -deduct } }
+              );
+              if (atomicResult) { deducted = true; break; }
+
+              // Re-read this batch's actual current quantity and retry with what's left
+              const freshDoc = await hub.Product.findOne(
+                { _id: item.productId, "inventoryBatches._id": batch._id },
+                { "inventoryBatches.$": 1 }
+              ).lean() as any;
+              const currentQty = freshDoc?.inventoryBatches?.[0]?.quantity ?? 0;
+              if (currentQty <= 0) break; // batch fully exhausted by concurrent orders
+              deduct = Math.min(currentQty, remaining); // take whatever is still available
+            }
+
+            if (!deducted) {
+              // Could not deduct from this batch after retries — move to next batch
+              // (remaining will catch the shortfall after the batch loop)
+              continue;
+            }
+
+            remaining -= deduct;
+          }
+
+          // If batches were exhausted before filling the full quantity, reject the order
+          if (remaining > 0) {
+            return res.status(409).json({
+              message: `"${product.name}" just went out of stock. Please refresh and try again.`,
+            });
+          }
+
+          // Remove zero-quantity batches and sync the product's total quantity field
+          const afterDeduct = await hub.Product.findById(item.productId).lean() as any;
+          const activeBatches = (afterDeduct.inventoryBatches ?? []).filter((b: any) => b.quantity > 0);
+          const totalQty = activeBatches.reduce((sum: number, b: any) => sum + b.quantity, 0);
+          await hub.Product.findByIdAndUpdate(item.productId, {
+            inventoryBatches: activeBatches,
+            quantity: totalQty,
+            updatedAt: new Date(),
+          });
         }
       }
 
@@ -604,29 +676,7 @@ export async function registerRoutes(
             const code = String(input.couponCode).trim().toUpperCase();
             const coupon = await hub.Coupon.findOne({ code, isActive: true }).lean() as any;
             if (coupon) {
-              // ── Server-side maxUsage enforcement (per-customer) ──────────────
-              if (coupon.maxUsage != null && Number(coupon.maxUsage) > 0) {
-                const couponId = String(coupon._id);
-                const phone = String(input.phone ?? "");
-                if (phone) {
-                  const custDoc = await CustomerDbModel.findOne(
-                    { phone },
-                    { activeCoupons: 1, usedCoupons: 1 }
-                  ).lean() as any;
-                  const activeEntry = (custDoc?.activeCoupons ?? []).find(
-                    (ac: any) => String(ac.couponId) === couponId
-                  );
-                  const activeCount = activeEntry
-                    ? (activeEntry.usedCount != null ? Number(activeEntry.usedCount) : 1)
-                    : 0;
-                  const historicalCount = (custDoc?.usedCoupons ?? []).filter(
-                    (uc: any) => String(uc.couponId) === couponId
-                  ).length;
-                  if (activeCount + historicalCount >= Number(coupon.maxUsage)) {
-                    return res.status(400).json({ message: "CouponUsageLimitReached" });
-                  }
-                }
-              }
+              // (maxUsage enforcement already ran in the pre-flight block above)
               const cartTotal = (input.items as any[]).reduce(
                 (sum: number, item: any) => sum + ((item.price ?? 0) * (item.quantity ?? 1)),
                 0

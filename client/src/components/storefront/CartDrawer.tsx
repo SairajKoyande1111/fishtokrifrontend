@@ -677,7 +677,7 @@ export function CartDrawer() {
       deliveryDate,
       couponCode: appliedCoupon?.code ?? null,
       discountAmount: discountAmount > 0 ? discountAmount : null,
-      paymentMode: paymentMethod === "online" ? "upi" : "cash",
+      paymentMode: finalTotal === 0 ? "wallet" : paymentMethod === "online" ? "upi" : "cash",
     } as any;
   };
 
@@ -686,6 +686,14 @@ export function CartDrawer() {
     if (!selected) return;
     if (!selectedTimeslot) {
       toast({ title: "Please select a delivery time slot", variant: "destructive" });
+      return;
+    }
+
+    // Wallet covers entire total — place order directly, no payment method needed
+    if (finalTotal === 0) {
+      createOrder(buildOrderPayload(selected), {
+        onSuccess: () => { setIsSuccess(true); clearCart(); setUseWallet(false); }
+      });
       return;
     }
 
@@ -1578,7 +1586,8 @@ export function CartDrawer() {
                         </div>
                     </div>
 
-                    {/* Payment Method */}
+                    {/* Payment Method — hidden when wallet covers the full total */}
+                    {finalTotal > 0 && (
                     <div className="px-4 mt-5 mb-4 space-y-3">
                       <h3 className="font-semibold text-foreground text-sm flex items-center gap-1.5">
                         <span
@@ -1618,6 +1627,7 @@ export function CartDrawer() {
                         ))}
                       </div>
                     </div>
+                    )}
                   </div>
 
                   <div className="px-4 py-4 border-t border-border/30 bg-white sticky bottom-0 z-10">
@@ -1648,8 +1658,8 @@ export function CartDrawer() {
                         data-testid="button-place-order"
                       >
                         {isPending || isProcessingPayment
-                          ? <><Loader2 className="w-4 h-4 animate-spin" />{paymentMethod === "online" && isProcessingPayment ? "Opening UPI..." : "Placing..."}</>
-                          : <>{paymentMethod === "online" ? "Pay via UPI" : "Proceed"} <ChevronRight className="w-4 h-4" /></>
+                          ? <><Loader2 className="w-4 h-4 animate-spin" />{paymentMethod === "online" && isProcessingPayment && finalTotal > 0 ? "Opening UPI..." : "Placing..."}</>
+                          : <>{paymentMethod === "online" && finalTotal > 0 ? "Pay via UPI" : "Place Order"} <ChevronRight className="w-4 h-4" /></>
                         }
                       </Button>
                     </div>
